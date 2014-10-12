@@ -21,8 +21,13 @@ class VisionSystem(object):
 	# Window names
 	CAM_FEED_NAME = 'Camera Feed'
 	CAL_NAME = 'Calibrated Image'
-	OTSU_NAME = 'Otsu Thresh'
+	PROC1_NAME = 'Processing 1'
 	PROC2_NAME = 'Processing 2'
+
+	G_CENTER = 52
+	R_CENTER = 0
+	SMIN = 50
+	VMIN = 80
 
 	def __init__(self, camera):
 		self.camera = camera
@@ -58,15 +63,16 @@ class VisionSystem(object):
 		cv2.setMouseCallback(self.CAL_NAME, self.colorClickHandler)
 
 		# Image processing window 1
-		procWindow1 = cv2.namedWindow(self.OTSU_NAME)
-		cv2.createTrackbar('Threshold', self.OTSU_NAME, 0, 255, self.trackbarChangeHandler)
+		procWindow1 = cv2.namedWindow(self.PROC1_NAME)
+		cv2.createTrackbar('Threshold', self.PROC1_NAME, 0, 255, self.trackbarChangeHandler)
 		
 		# Image processing Window 2
 		procWindow2 = cv2.namedWindow(self.PROC2_NAME)
-		cv2.createTrackbar('Center', self.PROC2_NAME, 50, 255, self.trackbarChangeHandler) 
-		cv2.createTrackbar('Width', self.PROC2_NAME, 10, 20, self.trackbarChangeHandler)
-		cv2.createTrackbar('Cutoff', self.PROC2_NAME, 100, 255, self.trackbarChangeHandler)
-		
+		cv2.createTrackbar('Green', self.PROC2_NAME, 58, 255, self.trackbarChangeHandler) 
+		cv2.createTrackbar('Red', self.PROC2_NAME, 0, 255, self.trackbarChangeHandler)
+		cv2.createTrackbar('GCutoff', self.PROC2_NAME, 80, 255, self.trackbarChangeHandler)
+		cv2.createTrackbar('RCutoff', self.PROC2_NAME, 100, 255, self.trackbarChangeHandler)
+
 		# Main processing loop
 		while(True):
 		    frameRet, self.camImg = self.vidcap.read()
@@ -74,22 +80,35 @@ class VisionSystem(object):
 		    cv2.imshow(self.CAM_FEED_NAME, self.camImg)
 		    if(self.calstate == CalState.CALIBRATED):
 				self.remapImage()
-				self.segmentImage()
-				centroid1 = self.findMarker(self.segImg2)
-				print str(centroid1)
+				#self.segmentImage()
+				gr = cv2.getTrackbarPos('Green', self.PROC2_NAME)
+				rd = cv2.getTrackbarPos('Red', self.PROC2_NAME)
+				gvmin = cv2.getTrackbarPos('GCutoff', self.PROC2_NAME)
+				rvmin = cv2.getTrackbarPos('RCutoff', self.PROC2_NAME)
+				gCentroid, self.gTagImg = self.findMarker(self.warpImg, gr, 10, self.SMIN, gvmin)
+				rCentroid, self.rTagImg = self.findMarker(self.warpImg, rd, 10, self.SMIN, rvmin)
+				print 'Green:', str(gCentroid), ' Red:', str(rCentroid)
+				#self.printCentroids(gCentroid, rCentroid)
+				self.rgImg = self.comboImage(self.gTagImg, self.rTagImg)
 				cv2.imshow(self.CAL_NAME, self.warpImg)
-				cv2.imshow(self.OTSU_NAME, self.segImg1)
-				cv2.imshow(self.PROC2_NAME, self.segImg2)
-		    if cv2.waitKey(1) & 0xFF == ord('q'):
+				cv2.imshow(self.PROC1_NAME, self.rTagImg)
+				cv2.imshow(self.PROC2_NAME, self.rgImg)
+		    if cv2.waitKey(20) & 0xFF == ord('q'):
 			break
-	    
+    
+
 	# Use current perspective transform to remap image
 	def remapImage(self):
 		if(self.calstate == CalState.CALIBRATED):
-		    self.warpImg = cv2.warpPerspective(self.camImg, self.warp,(self.XSIZE,self.YSIZE))
+			self.warpImg = cv2.warpPerspective(self.camImg, self.warp,(self.XSIZE,self.YSIZE))
+			self.warpImg = cv2.medianBlur(self.warpImg, 5)
 		else:
 		    print 'Transform not calibrated'
-	    
+
+	#def printCentroids(self, gCenter, rCenter):
+		#pass
+		#print '"Green:({:d},{:d})'.format(*gCenter)
+
 	def drawSquareMarker(self, img, x , y, width, color):
 		w2 = width/2
 		cv2.rectangle(img, (x-w2,y-w2),(x+w2,y+w2),color,1)
@@ -97,33 +116,38 @@ class VisionSystem(object):
 	def drawCalMarkers(self):
 		for pt in self.calpts:
 		    self.drawSquareMarker(self.camImg, pt[0], pt[1], 5, (255,0,255))
-		
+	
+	def comboImage(self, gImg, rImg):
+		zeroArr = np.zeros(gImg.shape, dtype=np.uint8)
+		return cv2.merge((zeroArr,gImg, rImg))
+
+	# Finds a marker's central moment
+	def findMarker(self, image, hueCenter, hueWidth, satMin, valMin):
+		hsvImg = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+		markerImg = cv2.inRange(hsvImg, np.array([hueCenter-hueWidth/2, satMin, valMin]), np.array([hueCenter+hueWidth/2, 255, 255]))
+		cleanElement = cv2.getStructuringElement(cv2.MORPH_CROSS, (5,5))
+		markerImg = cv2.erode(markerImg, cleanElement) # Clean up marker image w/ erode-dilate-median
+		markerImg = cv2.dilate(markerImg, cleanElement)
+		markerImg = cv2.medianBlur(markerImg, 5)
+		mMoments = cv2.moments(markerImg) # Compute moments
+		m00 = mMoments['m00']
+		if(m00 > 0.1):
+			return (mMoments['m10']/m00, mMoments['m01']/m00), markerImg
+		return None, markerImg
+
 	def segmentImage(self):
 		grayImage = cv2.cvtColor(self.warpImg, cv2.COLOR_BGR2GRAY) # Convert to grayscale
 		#blurImage = cv2.GaussianBlur(grayImage, (5,5), 0) # Prelim filtering
 		blurImage = cv2.medianBlur(grayImage, 5)
-		otsuValue = cv2.getTrackbarPos('Threshold', self.OTSU_NAME)
-		center = cv2.getTrackbarPos('Center', self.PROC2_NAME)
-		width = cv2.getTrackbarPos('Width', self.PROC2_NAME)
+		otsuValue = cv2.getTrackbarPos('Threshold', self.PROC1_NAME)
+		center = cv2.getTrackbarPos('Green', self.PROC2_NAME)
+		width = cv2.getTrackbarPos('Red', self.PROC2_NAME)
 		cutoff = cv2.getTrackbarPos('Cutoff', self.PROC2_NAME)
 		#valmin = cv2.getTrackbarPos('ValMin', self.PROC2_NAME)
 		r1, self.segImg1 = cv2.threshold(blurImage, otsuValue, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU) #Otsu Binarization
 		#self.segImg2 = cv2.adaptiveThreshold(blurImage, adaptiveValue, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
 		hsvImg = cv2.cvtColor(self.warpImg, cv2.COLOR_BGR2HSV)
 		self.segImg2 = cv2.inRange(hsvImg, np.array([center-width/2, cutoff, cutoff]), np.array([center+width/2,255,255]))
-	
-	# Computes a marker centroid from a raw thresholded image
-	def findMarker(self, image):
-		element = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
-		intImg = cv2.erode(image, element) #Erode
-		intImg = cv2.dilate(intImg, element) #Dilate
-		markerMoments = cv2.moments(intImg) # Compute moments
-		m00 = markerMoments['m00']
-		if(m00 > 0.1):
-			retTuple = (markerMoments['m10']/m00, markerMoments['m01']/m00)
-			return retTuple
-		#return (-1,-1)
-		#return (0,0)
 
 	### Event Handlers ###
 
