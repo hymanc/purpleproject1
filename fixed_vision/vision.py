@@ -10,6 +10,7 @@ import cv2
 import numpy as np
 
 from uvcinterface import UVCInterface as uvc
+from visionUtil import VisionUtil as vu
 
 # Calibration state 'Enumeration'
 class CalState(object):
@@ -17,6 +18,7 @@ class CalState(object):
     CAL_PROG = 2
     CALIBRATED = 3
 
+### Vision System Class ###
 class VisionSystem(object):
 	# Window names
 	CAM_FEED_NAME = 'Camera Feed'
@@ -24,18 +26,22 @@ class VisionSystem(object):
 	PROC1_NAME = 'Processing 1'
 	PROC2_NAME = 'Processing 2'
 
+	# Constants
 	G_CENTER = 52
 	R_CENTER = 0
 	SMIN = 50
 	VMIN = 80
 
 	def __init__(self, camera):
+		### Instance Value initialization ###
 		self.camera = camera
 		self.calstate = CalState.UNCAL
 		self.calpts = []
 		self.XSIZE = 600
 		self.YSIZE = 600
 		self.worldpts = np.float32([[0,0],[self.XSIZE,0],[self.XSIZE,self.YSIZE],[0,self.YSIZE]])
+
+		### Camera initialization ###
 		print 'Opening Camera ' + str(camera)
 		self.vidcap = cv2.VideoCapture(camera)# Open up specified camera
 		# Check if camera is opened and exit if not
@@ -50,21 +56,20 @@ class VisionSystem(object):
 		uvc.set(self.camera, uvc.EXPOSURE_AUTO_PRIORITY, 1)
 
 	    ### Initialize UI elements ###
-	    # Camera window
+	    # Camera input window
 		camWindow = cv2.namedWindow(self.CAM_FEED_NAME)
 		cv2.createTrackbar('Gain', self.CAM_FEED_NAME, 128, 255, self.gainChanged)
 		cv2.createTrackbar('Exposure', self.CAM_FEED_NAME, 1600, 2000, self.exposureChanged)
 		cv2.createTrackbar('Saturation', self.CAM_FEED_NAME, 128, 255, self.saturationChanged)
-		# Set mouse callbacks for calibration
-		cv2.setMouseCallback(self.CAM_FEED_NAME, self.mouseClickHandler)
+		cv2.setMouseCallback(self.CAM_FEED_NAME, self.mouseClickHandler) # Set mouse callbacks for calibration
 		
 		# Rectified/Calibrated Image window
 		calWindow = cv2.namedWindow(self.CAL_NAME)
 		cv2.setMouseCallback(self.CAL_NAME, self.colorClickHandler)
 
 		# Image processing window 1
-		procWindow1 = cv2.namedWindow(self.PROC1_NAME)
-		cv2.createTrackbar('Threshold', self.PROC1_NAME, 0, 255, self.trackbarChangeHandler)
+		#procWindow1 = cv2.namedWindow(self.PROC1_NAME)
+		#cv2.createTrackbar('Threshold', self.PROC1_NAME, 0, 255, self.trackbarChangeHandler)
 		
 		# Image processing Window 2
 		procWindow2 = cv2.namedWindow(self.PROC2_NAME)
@@ -72,26 +77,32 @@ class VisionSystem(object):
 		cv2.createTrackbar('Red', self.PROC2_NAME, 0, 255, self.trackbarChangeHandler)
 		cv2.createTrackbar('GCutoff', self.PROC2_NAME, 80, 255, self.trackbarChangeHandler)
 		cv2.createTrackbar('RCutoff', self.PROC2_NAME, 100, 255, self.trackbarChangeHandler)
+		cv2.createTrackbar('SatCutoff', self.PROC2_NAME, 100, 255, self.trackbarChangeHandler)
 
-		# Main processing loop
+		### Main processing loop ###
 		while(True):
 		    frameRet, self.camImg = self.vidcap.read()
 		    self.drawCalMarkers()
 		    cv2.imshow(self.CAM_FEED_NAME, self.camImg)
 		    if(self.calstate == CalState.CALIBRATED):
-				self.remapImage()
-				#self.segmentImage()
+				self.remapImage() # Apply perspective warp
+
 				gr = cv2.getTrackbarPos('Green', self.PROC2_NAME)
 				rd = cv2.getTrackbarPos('Red', self.PROC2_NAME)
 				gvmin = cv2.getTrackbarPos('GCutoff', self.PROC2_NAME)
 				rvmin = cv2.getTrackbarPos('RCutoff', self.PROC2_NAME)
-				gCentroid, self.gTagImg = self.findMarker(self.warpImg, gr, 10, self.SMIN, gvmin)
-				rCentroid, self.rTagImg = self.findMarker(self.warpImg, rd, 10, self.SMIN, rvmin)
-				print 'Green:', str(gCentroid), ' Red:', str(rCentroid)
-				#self.printCentroids(gCentroid, rCentroid)
-				self.rgImg = self.comboImage(self.gTagImg, self.rTagImg)
+				smin = cv2.getTrackbarPos('SatCutoff', self.PROC2_NAME)
+				gCentroid, self.gTagImg = self.findMarker(self.warpImg, gr, 10, smin, gvmin)
+				rCentroid, self.rTagImg = self.findMarker(self.warpImg, rd, 10, smin, rvmin)
+				vu.printCentroids(gCentroid, rCentroid)
+				self.rgImg = vu.comboImage(self.gTagImg, self.rTagImg)
+				vu.localizeRobot(gCentroid, rCentroid)
+				if(gCentroid != None):
+					vu.drawSquareMarker(self.rgImg, int(gCentroid[0]), int(gCentroid[1]), 5, (255,0,0))
+				if(rCentroid != None):
+					vu.drawSquareMarker(self.rgImg, int(rCentroid[0]), int(rCentroid[1]), 5, (255,0,0))
 				cv2.imshow(self.CAL_NAME, self.warpImg)
-				cv2.imshow(self.PROC1_NAME, self.rTagImg)
+				#cv2.imshow(self.PROC1_NAME, self.rTagImg)
 				cv2.imshow(self.PROC2_NAME, self.rgImg)
 		    if cv2.waitKey(20) & 0xFF == ord('q'):
 			break
@@ -105,21 +116,10 @@ class VisionSystem(object):
 		else:
 		    print 'Transform not calibrated'
 
-	#def printCentroids(self, gCenter, rCenter):
-		#pass
-		#print '"Green:({:d},{:d})'.format(*gCenter)
-
-	def drawSquareMarker(self, img, x , y, width, color):
-		w2 = width/2
-		cv2.rectangle(img, (x-w2,y-w2),(x+w2,y+w2),color,1)
-	       
+	# Draws calibration markers on the camera image       
 	def drawCalMarkers(self):
 		for pt in self.calpts:
-		    self.drawSquareMarker(self.camImg, pt[0], pt[1], 5, (255,0,255))
-	
-	def comboImage(self, gImg, rImg):
-		zeroArr = np.zeros(gImg.shape, dtype=np.uint8)
-		return cv2.merge((zeroArr,gImg, rImg))
+		    vu.drawSquareMarker(self.camImg, pt[0], pt[1], 5, (255,0,255))
 
 	# Finds a marker's central moment
 	def findMarker(self, image, hueCenter, hueWidth, satMin, valMin):
@@ -200,6 +200,7 @@ class VisionSystem(object):
 	# Exposure slider handler
 	def exposureChanged(self, exp):
 		uvc.set(self.camera, uvc.EXPOSURE_ABS, exp)
+
 
 def main():
 	print 'Args:' , str(sys.argv)
