@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import cv2
 import numpy as np
 from math import atan2
@@ -26,8 +28,12 @@ class VisionUtil(object):
 	@staticmethod
 	def localizeRobot(gCtr, rCtr):
 		if((gCtr != None) and (rCtr != None)):
-			ctr = ((gCtr[0] + rCtr[0])/2, (gCtr[1] + rCtr[1])/2)
-			phi = atan2(gCtr[1]-rCtr[1], gCtr[0]-rCtr[0])# Compute angle
-			ctrStr = '(' + str(round(ctr[0],1)) + ',' + str(round(ctr[1],1)) + ')'
-			phiStr = str(round(phi,3))
-			print 'Center:', ctrStr, '\tPhi:', phiStr
+			ctr = ((gCtr[0] + rCtr[0])/2, (gCtr[1] + rCtr[1])/2) # Compute line midpoint
+			phi = atan2(gCtr[1]-rCtr[1], gCtr[0]-rCtr[0]) # Compute angle
+			#ctrStr = '(' + str(round(ctr[0],1)) + ',' + str(round(ctr[1],1)) + ')'
+			#phiStr = str(round(phi,3))
+			#print 'Center:', ctrStr, '\tPhi:', phiStr
+			return ctr, phi
+		else:
+			return None, None
+			

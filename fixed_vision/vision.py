@@ -11,6 +11,7 @@ import numpy as np
 
 from uvcinterface import UVCInterface as uvc
 from visionUtil import VisionUtil as vu
+from collections import deque
 
 # Calibration state 'Enumeration'
 class CalState(object):
@@ -31,6 +32,11 @@ class VisionSystem(object):
 	R_CENTER = 0
 	SMIN = 50
 	VMIN = 80
+
+	#HISTORY_LENGTH = 15
+	EMPTY_KERNEL = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+	RAW_KERNEL = np.array([1, 1, 3, 5, 7, 7, 8, 10, 12, 14, 14, 18, 20, 20, 20], dtype = np.float32)
+	FIR_KERNEL = np.multiply(RAW_KERNEL,1/np.linalg.norm(RAW_KERNEL,1)) # Normalized kernel
 
 	def __init__(self, camera):
 		### Instance Value initialization ###
@@ -79,6 +85,10 @@ class VisionSystem(object):
 		cv2.createTrackbar('RCutoff', self.PROC2_NAME, 100, 255, self.trackbarChangeHandler)
 		cv2.createTrackbar('SatCutoff', self.PROC2_NAME, 100, 255, self.trackbarChangeHandler)
 
+		self.xHistory = deque(self.EMPTY_KERNEL)
+		self.yHistory = deque(self.EMPTY_KERNEL)
+		self.phiHistory = deque(self.EMPTY_KERNEL)
+
 		### Main processing loop ###
 		while(True):
 		    frameRet, self.camImg = self.vidcap.read()
@@ -86,7 +96,6 @@ class VisionSystem(object):
 		    cv2.imshow(self.CAM_FEED_NAME, self.camImg)
 		    if(self.calstate == CalState.CALIBRATED):
 				self.remapImage() # Apply perspective warp
-
 				gr = cv2.getTrackbarPos('Green', self.PROC2_NAME)
 				rd = cv2.getTrackbarPos('Red', self.PROC2_NAME)
 				gvmin = cv2.getTrackbarPos('GCutoff', self.PROC2_NAME)
@@ -94,9 +103,12 @@ class VisionSystem(object):
 				smin = cv2.getTrackbarPos('SatCutoff', self.PROC2_NAME)
 				gCentroid, self.gTagImg = self.findMarker(self.warpImg, gr, 10, smin, gvmin)
 				rCentroid, self.rTagImg = self.findMarker(self.warpImg, rd, 10, smin, rvmin)
-				vu.printCentroids(gCentroid, rCentroid)
+				#vu.printCentroids(gCentroid, rCentroid)
 				self.rgImg = vu.comboImage(self.gTagImg, self.rTagImg)
-				vu.localizeRobot(gCentroid, rCentroid)
+				ctr, phi = vu.localizeRobot(gCentroid, rCentroid)
+				if((ctr != None) and (phi != None)):
+				    fctr, fphi = self.filterPoints(ctr, phi)
+				    vu.drawSquareMarker(self.rgImg, int(fctr[0]), int(fctr[1]), 5, (255,0,0))
 				if(gCentroid != None):
 					vu.drawSquareMarker(self.rgImg, int(gCentroid[0]), int(gCentroid[1]), 5, (255,0,0))
 				if(rCentroid != None):
@@ -107,11 +119,11 @@ class VisionSystem(object):
 		    if cv2.waitKey(20) & 0xFF == ord('q'):
 			break
     
-
 	# Use current perspective transform to remap image
 	def remapImage(self):
 		if(self.calstate == CalState.CALIBRATED):
 			self.warpImg = cv2.warpPerspective(self.camImg, self.warp,(self.XSIZE,self.YSIZE))
+			self.warpImg = cv2.GaussianBlur(self.warpImg, (9,9), 1)
 			self.warpImg = cv2.medianBlur(self.warpImg, 5)
 		else:
 		    print 'Transform not calibrated'
@@ -135,22 +147,25 @@ class VisionSystem(object):
 			return (mMoments['m10']/m00, mMoments['m01']/m00), markerImg
 		return None, markerImg
 
-	def segmentImage(self):
-		grayImage = cv2.cvtColor(self.warpImg, cv2.COLOR_BGR2GRAY) # Convert to grayscale
-		#blurImage = cv2.GaussianBlur(grayImage, (5,5), 0) # Prelim filtering
-		blurImage = cv2.medianBlur(grayImage, 5)
-		otsuValue = cv2.getTrackbarPos('Threshold', self.PROC1_NAME)
-		center = cv2.getTrackbarPos('Green', self.PROC2_NAME)
-		width = cv2.getTrackbarPos('Red', self.PROC2_NAME)
-		cutoff = cv2.getTrackbarPos('Cutoff', self.PROC2_NAME)
-		#valmin = cv2.getTrackbarPos('ValMin', self.PROC2_NAME)
-		r1, self.segImg1 = cv2.threshold(blurImage, otsuValue, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU) #Otsu Binarization
-		#self.segImg2 = cv2.adaptiveThreshold(blurImage, adaptiveValue, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
-		hsvImg = cv2.cvtColor(self.warpImg, cv2.COLOR_BGR2HSV)
-		self.segImg2 = cv2.inRange(hsvImg, np.array([center-width/2, cutoff, cutoff]), np.array([center+width/2,255,255]))
+	# FIR on centers and angles
+	def filterPoints(self, ctr, phi):
+		if((ctr != None) and (phi != None)):
+			if(len(self.xHistory) == len(self.FIR_KERNEL)):
+				self.xHistory.popleft()
+			if(len(self.yHistory) == len(self.FIR_KERNEL)):
+				self.yHistory.popleft()
+			if(len(self.phiHistory) == len(self.FIR_KERNEL)):
+				self.phiHistory.popleft()
+			self.xHistory.append(ctr[0])
+			self.yHistory.append(ctr[1])
+			self.phiHistory.append(phi)
+			xFilter = np.linalg.norm(np.multiply(self.FIR_KERNEL, np.array(self.xHistory)),1)
+			yFilter = np.linalg.norm(np.multiply(self.FIR_KERNEL, np.array(self.yHistory)),1)
+			phiFilter = np.linalg.norm(np.multiply(self.FIR_KERNEL, np.array(self.phiHistory)),1)
+			#print 'Filtered Phi:', phiFilter, ' Raw Phi:', phi
+			return (xFilter, yFilter), phiFilter
 
 	### Event Handlers ###
-
 	# Camera input mouseclick handler
 	def mouseClickHandler(self, event, x, y, flags, param):
 		if event == cv2.EVENT_RBUTTONDOWN:
