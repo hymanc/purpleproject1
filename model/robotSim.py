@@ -73,7 +73,35 @@ def findXing(a,b):
   q = Q[:2,2]/Q[2,2]
   c = q[0]*(a[1]-a[0])+a[0]
   return c
-  
+
+def Checkslipping(self, motorspeed)
+"""
+motor speed is a 4 by 1 vector
+identify which wheel is slipping
+"""
+  Identifymatix = (1/4) * np.matrix('1 1 -1 1; 1 1 1 -1;-1 1 1 1;1 -1 1 1')
+  slip = Identifymatrix * motorspeed
+  if slip[1] == 0 :
+         slipwheel_1 = 0
+  else:
+     slipwheel_1 = 1
+  return slipwheel_1
+  if slip[2] == 0 :
+         slipwheel_2 = 0
+  else:
+     slipwheel_2 = 1  
+  return slipwheel_2
+  if slip[3] == 0 :
+         slipwheel_3 = 0
+  else:
+     slipwheel_3 = 1
+  return slipwheel_3
+  if slip[4] == 0 :
+         slipwheel_4 = 0
+  else:
+     slipwheel_4 = 1
+  return slipwheel_4
+ 
 class RobotSimInterface( object ):
   """
   Abstract superclass RobotSimInterface defines the output-facing interface
@@ -140,11 +168,29 @@ class RobotSimInterface( object ):
     if self.out:
       self.out.write("%.2f, 1, %d, %d\n" % (now,n+1,x[0],x[1]))          
     return "Laser: %d,%d " % tuple(x)
-    
-    
-class DummyRobotSim( RobotSimInterface ):
+  
+class WheelUncertainties:
+       """
+       if the torque applied on the wheel is higher than the traction
+       then the wheel will slip
+       here we make wheel 1 slip
+       """
+       def __init__(self,torque):
+              self.__makeWheel1slip(torque)
+         
+        
+       def makeWheel1slip(self,torque): 
+              self.traction = np.random.normal(10,0.1,1000)
+              while (torque < self.traction):
+                     self.traction = np.random.normal(10,0.1,1000)
+              
+              return self.traction
+       
+       
+class DummyRobotSim( RobotSimInterface, WheelUncertainties):
   def __init__(self, *args, **kw):
     RobotSimInterface.__init__(self, *args, **kw)
+    WheelUncertainties.__init__(self, torque)
     self.dNoise = 0.1
     self.aNoise = 0.1
     
