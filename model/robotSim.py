@@ -74,7 +74,7 @@ def findXing(a,b):
   c = q[0]*(a[1]-a[0])+a[0]
   return c
 
-def Checkslipping(motorspeed)
+def Checkslipping(motorspeed):
 """
 motor speed is a 4 by 1 vector
 identify which wheel is slipping
@@ -170,7 +170,7 @@ class RobotSimInterface( object ):
       self.out.write("%.2f, 1, %d, %d\n" % (now,n+1,x[0],x[1]))          
     return "Laser: %d,%d " % tuple(x)
   
-class WheelUncertainties:
+class WheelUncertainties(object):
        """
        if the torque applied on the wheel is higher than the traction
        then the wheel will slip
