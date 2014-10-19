@@ -74,33 +74,34 @@ def findXing(a,b):
   c = q[0]*(a[1]-a[0])+a[0]
   return c
 
-def Checkslipping(self, motorspeed)
+def Checkslipping(motorspeed)
 """
 motor speed is a 4 by 1 vector
 identify which wheel is slipping
 """
   Identifymatix = (1/4) * np.matrix('1 1 -1 1; 1 1 1 -1;-1 1 1 1;1 -1 1 1')
   slip = Identifymatrix * motorspeed
+  
   if slip[1] == 0 :
-         slipwheel_1 = 0
+         slipwheel[0] = 0
   else:
-     slipwheel_1 = 1
-  return slipwheel_1
+     slipwheel[0] = 1
+  
   if slip[2] == 0 :
-         slipwheel_2 = 0
+         slipwheel[1] = 0
   else:
-     slipwheel_2 = 1  
-  return slipwheel_2
+     slipwheel[1] = 1  
+  
   if slip[3] == 0 :
-         slipwheel_3 = 0
+         slipwheel[2] = 0
   else:
-     slipwheel_3 = 1
-  return slipwheel_3
+     slipwheel[2] = 1
+ 
   if slip[4] == 0 :
-         slipwheel_4 = 0
+         slipwheel[3] = 0
   else:
-     slipwheel_4 = 1
-  return slipwheel_4
+     slipwheel[3] = 1
+  return slipwheel
  
 class RobotSimInterface( object ):
   """
@@ -193,7 +194,9 @@ class DummyRobotSim( RobotSimInterface, WheelUncertainties):
     WheelUncertainties.__init__(self, torque)
     self.dNoise = 0.1
     self.aNoise = 0.1
-    
+  
+  slip = Checkslipping(motorspeed) # motorspeed is 4x1 vector
+  
   def move( self, dist ):
     """
     Move forward some distance
