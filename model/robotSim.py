@@ -179,3 +179,6 @@ class DummyRobotSim( RobotSimInterface ):
     da = dot([1,-1],self.laserAxis)
     self.laserAxis[1] += randn(2) * sqrt(sum(da*da)) * 0.01
     
+    
+    
+    

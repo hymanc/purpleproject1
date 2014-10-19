@@ -28,6 +28,7 @@ class RobotSimulatorApp( JoyApp ):
     self.timeForStatus = self.onceEvery(1)
     self.timeForLaser = self.onceEvery(1/15.0)
     self.timeForFrame = self.onceEvery(1/20.0)
+    self.timeForDynamics = self.onceEvery(1/50.0)
     progress("Using %s:%d as the waypoint host" % self.srvAddr)
 
   def showSensors( self ):
