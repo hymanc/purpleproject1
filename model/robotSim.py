@@ -13,6 +13,7 @@ from waypointShared import *
 
 from pdb import set_trace as DEBUG
 
+import numpy as np
 
 MSG_TEMPLATE = {
        0: [[502, 251], [479, 272], [508, 296], [530, 274]],
@@ -49,59 +50,59 @@ def tags2list( dic ):
     ]
 
 def findXing(a,b):
-  """
-  Find the crossing point of two lines, represented each by a pair of
-  points on the line
-  
-  INPUT:
-    a -- 2x2 -- two points, in rows
-    b -- 2x2 -- two points, in rows
-  
-  OUTPUT: c -- 2 -- a point, as an array
-  """
-  a = asfarray(a)
-  b = asfarray(b)
-  # The nullspace of this matrix is the projective representation
-  # of the intersection of the lines. Each column's nullspace is
-  # one of the lines
-  X = c_[a[1]-a[0],b[0]-b[1],a[0]-b[0]].T
-  if X.ndim is not 2:
-    DEBUG()
-  Q = svd(X)[0]
-  # Last singular vector is basis for nullspace; convert back from
-  # projective to Cartesian representation
-  q = Q[:2,2]/Q[2,2]
-  c = q[0]*(a[1]-a[0])+a[0]
-  return c
+    """
+    Find the crossing point of two lines, represented each by a pair of
+    points on the line
+    
+    INPUT:
+	a -- 2x2 -- two points, in rows
+	b -- 2x2 -- two points, in rows
+    
+    OUTPUT: c -- 2 -- a point, as an array
+    """
+    a = asfarray(a)
+    b = asfarray(b)
+    # The nullspace of this matrix is the projective representation
+    # of the intersection of the lines. Each column's nullspace is
+    # one of the lines
+    X = c_[a[1]-a[0],b[0]-b[1],a[0]-b[0]].T
+    if X.ndim is not 2:
+	DEBUG()
+    Q = svd(X)[0]
+    # Last singular vector is basis for nullspace; convert back from
+    # projective to Cartesian representation
+    q = Q[:2,2]/Q[2,2]
+    c = q[0]*(a[1]-a[0])+a[0]
+    return c
 
 def Checkslipping(motorspeed):
-"""
-motor speed is a 4 by 1 vector
-identify which wheel is slipping
-"""
-  Identifymatix = (1/4) * np.matrix('1 1 -1 1; 1 1 1 -1;-1 1 1 1;1 -1 1 1')
-  slip = Identifymatrix * motorspeed
+    """
+    motor speed is a 4 by 1 vector
+    identify which wheel is slipping
+    """
+    Identifymatix = (1/4) * np.matrix('1 1 -1 1; 1 1 1 -1;-1 1 1 1;1 -1 1 1')
+    slip = Identifymatrix * motorspeed
   
-  if slip[1] == 0 :
-         slipwheel[0] = 0
-  else:
-     slipwheel[0] = 1
-  
-  if slip[2] == 0 :
-         slipwheel[1] = 0
-  else:
-     slipwheel[1] = 1  
-  
-  if slip[3] == 0 :
-         slipwheel[2] = 0
-  else:
-     slipwheel[2] = 1
- 
-  if slip[4] == 0 :
-         slipwheel[3] = 0
-  else:
-     slipwheel[3] = 1
-  return slipwheel
+    if slip[1] == 0 :
+	slipwheel[0] = 0
+    else:
+	slipwheel[0] = 1
+    
+    if slip[2] == 0 :
+	slipwheel[1] = 0
+    else:
+	slipwheel[1] = 1  
+    
+    if slip[3] == 0 :
+	slipwheel[2] = 0
+    else:
+	slipwheel[2] = 1
+    
+    if slip[4] == 0 :
+	slipwheel[3] = 0
+    else:
+	slipwheel[3] = 1
+    return slipwheel
  
 class RobotSimInterface( object ):
   """
@@ -167,67 +168,66 @@ class RobotSimInterface( object ):
     """
     x = findXing( self.laserScreen, self.laserAxis )
     if self.out:
-      self.out.write("%.2f, 1, %d, %d\n" % (now,n+1,x[0],x[1]))          
+	self.out.write("%.2f, 1, %d, %d\n" % (now,n+1,x[0],x[1]))          
     return "Laser: %d,%d " % tuple(x)
   
 class WheelUncertainties(object):
-       """
-       if the torque applied on the wheel is higher than the traction
-       then the wheel will slip
-       here we make wheel 1 slip
-       """
-       def __init__(self,torque):
-              self.__makeWheel1slip(torque)
-         
+    """
+    if the torque applied on the wheel is higher than the traction
+    then the wheel will slip
+    here we make wheel 1 slip
+    """
+    def __init__(self,torque):
+	self.makeWheel1slip(torque)
         
-       def makeWheel1slip(self,torque): 
-              self.traction = np.random.normal(10,0.1,1000)
-              while (torque < self.traction):
-                     self.traction = np.random.normal(10,0.1,1000)
-              
-              return self.traction
+    def makeWheel1slip(self,torque): 
+	self.traction = np.random.normal(10,0.1,1) # Changed param 3 to 1 from 1000
+	while (torque < self.traction):
+	    self.traction = np.random.normal(10,0.1,1)
+	return self.traction
        
        
-class DummyRobotSim( RobotSimInterface, WheelUncertainties):
-  def __init__(self, *args, **kw):
-    RobotSimInterface.__init__(self, *args, **kw)
-    WheelUncertainties.__init__(self, torque)
-    self.dNoise = 0.1
-    self.aNoise = 0.1
-  
-  slip = Checkslipping(motorspeed) # motorspeed is 4x1 vector
-  
-  def move( self, dist ):
-    """
-    Move forward some distance
-    """
-    # Compute a vector along the forward direction
-    fwd = dot([1,-1,-1,1],self.tagPos)/2
-    # Move all tag corners forward by distance, with some noise
-    self.tagPos = self.tagPos + fwd[newaxis,:] * dist * (1+randn()*self.dNoise)
+class DummyRobotSim( RobotSimInterface, WheelUncertainties ):
+    def __init__(self, *args, **kw):
+	RobotSimInterface.__init__(self, *args, **kw)
+	#torque = 1
+	#WheelUncertainties.__init__(self, torque)
+	self.dNoise = 0.1
+	self.aNoise = 0.1
+    
+	#slip = Checkslipping(motorspeed) # motorspeed is 4x1 vector
+    
+    def move( self, dist ):
+	"""
+	Move forward some distance
+	"""
+	# Compute a vector along the forward direction
+	fwd = dot([1,-1,-1,1],self.tagPos)/2
+	# Move all tag corners forward by distance, with some noise
+	self.tagPos = self.tagPos + fwd[newaxis,:] * dist * (1+randn()*self.dNoise)
 
-  def turn( self, angle ):
-    """
-    Turn by some angle
-    """
-    z = dot(self.tagPos,[1,1j])
-    c = mean(z)
-    zr = c + (z-c) * exp(1j * (angle+randn()*self.aNoise))
-    self.tagPos[:,0] = zr.real
-    self.tagPos[:,1] = zr.imag
+    def turn( self, angle ):
+	"""
+	Turn by some angle
+	"""
+	z = dot(self.tagPos,[1,1j])
+	c = mean(z)
+	zr = c + (z-c) * exp(1j * (angle+randn()*self.aNoise))
+	self.tagPos[:,0] = zr.real
+	self.tagPos[:,1] = zr.imag
     
-  def refreshState( self ):
-    """
-    Make state ready for use by client.
-    
-    ALGORITHM:
-    Since the entire robot state is captured by the location of the
-    robot tag corners, update the laser axis from the robot tag location 
-    """
-    self.laserAxis = dot([[1,1,0,0],[0,0,1,1]],self.tagPos)/2
-    da = dot([1,-1],self.laserAxis)
-    self.laserAxis[1] += randn(2) * sqrt(sum(da*da)) * 0.01
-    
-    
+    def refreshState( self ):
+	"""
+	Make state ready for use by client.
+	
+	ALGORITHM:
+	Since the entire robot state is captured by the location of the
+	robot tag corners, update the laser axis from the robot tag location 
+	"""
+	self.laserAxis = dot([[1,1,0,0],[0,0,1,1]],self.tagPos)/2
+	da = dot([1,-1],self.laserAxis)
+	self.laserAxis[1] += randn(2) * sqrt(sum(da*da)) * 0.01
+	
+	
     
     

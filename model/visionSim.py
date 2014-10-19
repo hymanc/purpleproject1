@@ -31,18 +31,18 @@ class VisionSim(object):
     @staticmethod
     def defaultSim():
 	tagLocations = [(-1,-1), (-1,1), (1,1), (1,-1)]
-	return VisionSim((960,720), (0,0,0), 5E-3, tagLocations)
+	return VisionSim((960,720), (0,0,0), 2E-3, tagLocations)
 	
     # Generates the camera matrix
     def pinholeCameraMatrix(self, f):
 	# Camera matrix = K*[R|t]
 	# Compute y-rotation
 	theta = -math.pi/2 # Camera Y-rotation
-	tx = -1.5	# Camera X-translation
-	ty = 0		# Camera Y-translation
-	tz = 1.5	# Camera Z-translation
-	fx = 8.85E-6*f # Focal length in terms of pixels
-	fy = fx
+	tx = 0		# Camera X-translation
+	ty = 0	# Camera Y-translation
+	tz = 1	# Camera Z-translation
+	fx = f/8.85E-6  # Focal length over pixel size (meters)
+	fy = fx		# Square pixel assumption
 	cx = (self.imageSize[0])/2
 	cy = (self.imageSize[1])/2
 	# Numpy matrix
@@ -50,10 +50,11 @@ class VisionSim(object):
 	# 0  fy 0  cy
 	# 0  0  1  1 
 	K = np.array( [ [fx, 0., cx] , [0., fy, cy] , [0.,0.,1.] ] ) # Camera intrinsics
-	Rt = np.array( [ [1., 0., 0., 0.], [0., 1., 0., 0.], [0., 0., 1., 0.] ] )
-	print str(K)
+	#Rt = np.array( [ [1., 0., 0., 0.], [0., 1., 0., 0.], [0., 0., 1., 0.] ] )
+	#print str(K)
+	#print str(Rt)
+	Rt = np.array( [ [1, 0, 0, tx] , [0,math.cos(theta),-math.sin(theta),ty] , [0,math.sin(theta),math.cos(theta),tz] ] ) # Only y-axis rotation of camera
 	print str(Rt)
-	#Rt = np.array( [cos(theta),0,sin(theta),tx] , [0,1,0,ty] , [-sin(theta),0,cos(theta),tz] ) # Only y-axis rotation of camera
 	self.camMatrix = np.dot(K,Rt) # Compute camera model (camMatrix)
 	
     # Computes a perspective rectification 
@@ -62,7 +63,7 @@ class VisionSim(object):
     def computePerspectiveRectification(self, worldCorr, imageCorr):
 	# Get 8 boundary centers
 	# Add noise to each point (vary by <10px)
-	
+	# TODO: Remove OpenCV dependency
 	for coord in imageCorr: # Add random noise and quantize image correspondences
 	    coord = around(coord + np.random.normal(0,1,2),0)
 	    # Add noise to each point
