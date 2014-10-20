@@ -292,6 +292,7 @@ class DummyRobotSim( RobotSimInterface, WheelUncertainties ):
 	self.tagPos = self.tagPos + (dot(np.array[[1],[1],[1],[1]],np.transpose(self.Rnex)  * (1+randn()*self.dNoise))
 
     def slipmove( self ):
+    	self.tagPos = self.tagPos + (dot(np.array[[1],[1],[1],[1]],np.transpose(self.slipRnex)  * (1+randn()*self.dNoise))
     	
     
     def refreshState( self ):
