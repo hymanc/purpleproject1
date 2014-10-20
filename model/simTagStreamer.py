@@ -51,6 +51,10 @@ class RobotSimulatorApp( JoyApp ):
     # Use the sensor socket (dual-use) to send to waypointServer
     self.sensor.sendto(msg, self.srvAddr)
     
+  def slip ( self, evt ):
+    
+      
+    
   def onEvent( self, evt ):
     # periodically, show the sensor reading we got from the waypointServer
     if self.timeForStatus(): 
@@ -63,20 +67,29 @@ class RobotSimulatorApp( JoyApp ):
       self.emitTagMessage()
 
     if evt.type == KEYDOWN:
-      if evt.key == K_UP:
-        self.robSim.move(0.5)
-        return progress("(say) Move forward")
-      elif evt.key == K_DOWN:
-        self.robSim.move(-0.5)
-        return progress("(say) Move back")
-      elif evt.key == K_LEFT:
-        self.robSim.turn(-0.5)
-        return progress("(say) Turn left")
-      elif evt.key == K_RIGHT:
-        self.robSim.turn(0.5)
-        return progress("(say) Turn right")
+      #slip event
+      if  evt.key == K_s:
+        self.robSim.slipmove()
+      elif evt.key == K_m:
+        if evt.key == K_UP:
+          self.robSim.move(0.5)
+          return progress("(say) Move forward")
+        elif evt.key == K_DOWN:
+          self.robSim.move(-0.5)
+          return progress("(say) Move back")
+        elif evt.key == K_LEFT:
+          self.robSim.turn(-0.5)
+          return progress("(say) Turn left")
+        elif evt.key == K_RIGHT:
+          self.robSim.turn(0.5)
+          return progress("(say) Turn right")
+      elif
+        self.robSim.move()
+        
     # Use superclass to show any other events
     return JoyApp.onEvent(self,evt)
+    
+    
 
 
 if __name__=="__main__":
