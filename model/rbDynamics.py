@@ -39,6 +39,7 @@ class PointForce(DynamicsPoint):
 	DynamicsPoint.__init__(center, forceVector)
 	self.Torque = []
         self.T_dirMatrix = []
+   	self.computeTorque()
    	
     def computeTorque(self):
 	
@@ -56,7 +57,8 @@ class displacement(PointForce):
 	def __init__(self,theta, WP,Rcoorp, Rcoor):
 		PointForce.__init__(center, forceVector,theta,WP)
 		self.Rnext = []
-	    
+	    	self.nextR()
+	    	
 	def nextR(self):
 		T = 0.1 #0.1 is the time increment
 		m = ? #mass
