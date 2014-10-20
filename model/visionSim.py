@@ -24,8 +24,8 @@ class VisionSim(object):
 	self.cameraPosition = cameraPosition
 	self.cameraTilt = cameraTilt
 	self.tagLocations = tagLocations
-	self.worldToCameraRigid()
 	self.cameraToWorldRigid()
+	self.worldToCameraRigid()
 	self.pinholeCameraMatrix(cameraF)
 	self.robotHeight = robotHeight
 	imTagCoord = self.computeImageCoordinates(tagLocations)
@@ -88,6 +88,8 @@ class VisionSim(object):
 	fy = fx		# Square pixel assumption
 	cx = (self.imageSize[0])/2
 	cy = (self.imageSize[1])/2
+	cx = 0
+	cy = 0
 	# Numpy matrix
 	# fx 0  0  cx
 	# 0  fy 0  cy
@@ -169,14 +171,14 @@ class VisionSim(object):
 	    estPt = np.append(estPt,[[1]])
 	    estPt.reshape((4,1))
 	    estPt = self.ptToWorld(estPt)# Handle camera translation/rotation
-	    print 'Est Pt:',str(estPt)
+	    #print 'Est Pt:',str(estPt)
 	    weCoords.append([estPt[0],estPt[2]])
 	    i = i + 1
 	return weCoords
     
     # Converts a world point into an estimated world point (w/ noise)
     def computeRemappedCoordinate(self, worldCoordinates, noiseSigma):
-	print str(worldCoordinates)
+	#print str(worldCoordinates)
 	imgCoords = self.computeImageCoordinates(worldCoordinates) # Compute and quantize image coordinates
 	weCoords = self.computeImageToWorldEstimate(imgCoords) # Reproject using rectification transform and quantize
 	for coord in weCoords: # Additive Gaussian noise
@@ -185,16 +187,30 @@ class VisionSim(object):
 	return weCoords
     
     # From 3 points, estimate center, theta (base rotation), phi (absolute laser rotation)
-    def estimateState(self, points):
-	gCtr = points[0]
-	rCtr = points[1]
-	bCtr = points[2]
+    def estimateState(self, points, idealFlag):
+	gACtr = points[0]
+	rACtr = points[1]
+	bACtr = points[2]
+	remapCtrs = self.computeRemappedCoordinate([gACtr, rACtr, bACtr],0.5)
+	gCtr = remapCtrs[0]
+	rCtr = remapCtrs[1]
+	bCtr = remapCtrs[2]
+	gx = float(gCtr[0])
+	gy = float(gCtr[1])
+	rx = float(rCtr[0])
+	ry = float(rCtr[1])
+	bx = float(bCtr[0])
+	by = float(bCtr[1])
 	# TODO: Run points through vision model
 	# Compute mean of points 1 and 2
-	ctr = np.array([[(gCtr[0] + rCtr[0])/2],[(gCtr[2] + rCtr[2])/2]]) # Compute line midpoint
-	theta = atan2(gCtr[2]-rCtr[2], gCtr[0]-rCtr[0]) # Compute base angle
-	phi = atan2(bCtr[2]-ctr[1], bCtr[0]-ctr[0]) # Compute laser angle
-	
+	ctr = np.array([[(gx + rx)/2],[(gy + ry)/2]]) # Compute line midpoint
+	theta = atan2(gy-ry, gx-rx) # Compute base angle
+	phi = atan2(by-ctr[1], bx-ctr[0]) # Compute laser angle
+	if idealFlag:
+	    ctr = np.array([[(gACtr[0] + rACtr[0])/2],[(gACtr[2] + rACtr[2])/2]]) # Compute line midpoint
+	    theta = atan2(gACtr[2]-rACtr[2], gACtr[0]-rACtr[0]) # Compute base angle
+	    phi = atan2(bACtr[2]-ctr[1], bACtr[0]-ctr[0]) # Compute laser angle
+	    
 	return ctr, theta, phi
 	
 

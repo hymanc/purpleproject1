@@ -312,13 +312,19 @@ class SlipDisplacement(PointForce):
 	self.slipTNext = self.theta + wCurrent*T
 	    
 		
-class HoloRobotSim( RobotSimInterface, WheelUncertainties, VisionSim ):
+class HoloRobotSim( RobotSimInterface, WheelUncertainties ):
     def __init__(self, *args, **kw):
 	RobotSimInterface.__init__(self, *args, **kw)
-	tagLocations = [[-1,0,-1], [-1,0,1], [1,0,1], [1,0,-1]]
+	#tagLocations = [[-1,0,-1], [-1,0,1], [1,0,1], [1,0,-1]]
 	defaultHeight = 0.09 #Approx 3.5" for tag height
 	focalLength = 2E-3
-	VisionSim((960,720), (0,1,-1), pi/2, focalLength, tagLocations, defaultHeight)	
+	tag1 = self.getTagXYZ(MSG_TEMPLATE[int(22)])
+	tag2 = self.getTagXYZ(MSG_TEMPLATE[24])
+	tag3 = self.getTagXYZ(MSG_TEMPLATE[26])
+	tag4 = self.getTagXYZ(MSG_TEMPLATE[28])
+	tagLocations = [tag1, tag2, tag3, tag4]
+	print str(tagLocations)
+	self.vis = VisionSim((960,720), (0,1,-1), pi/2, focalLength, tagLocations, defaultHeight)	
 	#WheelUncertainties.__init__(self, torque)
 	#Displacement(self,theta, WP,Rcoorp, Rcoor)
 	self.dNoise = 0.1
@@ -329,16 +335,19 @@ class HoloRobotSim( RobotSimInterface, WheelUncertainties, VisionSim ):
     def computeStep(self):
 	print 'Computing step'
 	markerPoints = self.getRealMarkerPoints()# Get actual marker points
-	centerEst, thetaEst, phiEst = self.estimateState(markerPoints)
+	centerEst, thetaEst, phiEst = self.vis.estimateState(markerPoints,0)
+	print 'Center',centerEst
+	print 'Theta', thetaEst
+	print 'Phi', phiEst
 	# Get reprojected markers
 	# Compute center, angles from markers
 	# Compute laser error and generate feedback
-	waypoint = self.getWaypointCoordinate(self.getNextWaypoint())
-	rn = randomFail(1)
+	waypoint = self.getTagCoordinate(self.getNextWaypoint())
+	rn = randomFail(0.5)
 	forceVector = np.array(waypoint) - np.array(centerEst)
 	if(np.linalg.norm(centerEst - waypoint) < 20):
 	    self.waypointCount = self.waypointCount + 1
-	    waypoint = self.getWaypointCoordinate(self.getNextWaypoint())
+	    waypoint = self.getTagCoordinate(self.getNextWaypoint())
 	#print 'F', str(forceVector)
 	if(rn == 1):
 	    self.d = SlipDisplacement(thetaEst, waypoint, self.previousPosition, centerEst, forceVector)
@@ -399,7 +408,7 @@ class HoloRobotSim( RobotSimInterface, WheelUncertainties, VisionSim ):
 	print 'Next waypoint: 0'
 	return self.waypoints[self.waypointCount]
     #
-    def getWaypointCoordinate(self, waypointBounds):
+    def getTagCoordinate(self, waypointBounds):
 	count = 0
 	xsum = 0
 	ysum = 0
@@ -408,5 +417,15 @@ class HoloRobotSim( RobotSimInterface, WheelUncertainties, VisionSim ):
 	    ysum = ysum + pt[1]
 	    count = count + 1
 	return [[xsum/count],[ysum/count]]
+    
+    def getTagXYZ(self, waypointBounds):
+	count = 0
+	xsum = 0
+	zsum = 0
+	for pt in waypointBounds:
+	    xsum = xsum + pt[0]
+	    zsum = zsum + pt[1]
+	    count = count + 1
+	return [xsum/count,0,zsum/count]
 	
     
