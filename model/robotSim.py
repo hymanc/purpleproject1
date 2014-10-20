@@ -8,6 +8,7 @@ from gzip import open as opengz
 from json import dumps as json_dumps
 from numpy import asfarray, dot, c_, newaxis, mean, exp, sum, sqrt
 from numpy.linalg import svd
+from numpy.linalg import inv
 from numpy.random import randn
 from waypointShared import *
 
@@ -185,36 +186,90 @@ class WheelUncertainties(object):
 	while (torque < self.traction):
 	    self.traction = np.random.normal(10,0.1,1)
 	return self.traction
-       
+
+
+
+# Abstract Container class for planar dynamics types with a center and value
+class DynamicsPoint(object):
+    def __init__(self, center, value):
+	self.center = center
+	self.value = value
+    
+    def getCenter(self):
+	return center
+    
+    def getX(self):
+	return self.center[0]
+    
+    def getY(self):
+	return self.center[1]
+    
+    def getValue(self):
+	return self.value
+    
+# Point Mass class
+# x,y position of point mass (x)
+# Mass value (m)
+class PointMass(DynamicsPoint):
+    def __init__(self,center,m):
+	DynamicsPoint.__init__(center, m)
+
+# Moment of inertia class 
+# x,y position of axis
+# Moment value
+class MomentOfInertia(DynamicsPoint):
+    def __init__(self, center, I):
+	DynamicsPoint.__init__(center, I)
+	
+# Force Class
+class PointForce(DynamicsPoint):
+    def __init__(self, center, forceVector,theta,WP):
+	DynamicsPoint.__init__(center, forceVector)
+	self.Torque = []
+        self.T_dirMatrix = []
+   	
+    def computeTorque(self):
+	
+    	angle_si = np.arctan2([self.WP[1],  DynamicsPoint.getY], [self.WP[1],  DynamicsPoint.getX])
+    	Fx = 10*np.cos(angle_si - self.theta)
+    	Fy = 10*np.sin(angle_si - self.theta)
+    	Force  = np.array([Fx], [Fy], [0]])
+    	self.T_dirMatrix=np.array([[1., 0.5, -0.5], [0., -np.sqrt(3)/2, np.sqrt(3)/2], [0.1,0.1,0.1]])
+    	invDmatrix = numpy.linalg.inv(self.T_dirMatrix)
+    	self.Torque = invDmatrix*Force
+    	
+ 
+
+class displacement(PointForce):
+	def __init__(self,theta, WP,Rcoorp, Rcoor):
+		PointForce.__init__(center, forceVector,theta,WP)
+		self.Rnext = []
+	    
+	def nextR(self):
+		T = 0.1 #0.1 is the time increment
+		m = ? #mass
+		Rotation = np.array([[np.cos(self.theta), -1*np.sin(self.theta),0], [np.sin(self.theta), np.cos(self.theta),0],[0,0,1]])
+		ForceNew = Rotation * self.T_dirMatrix * self.Torque
+		Vp = (self.Rcoor - self.Rcoorp)/T 
+		Vcurrent = Vp*0.5 + np.array([[ForceNew[0]*T/(2*m)], [ForceNew[1]*T/(2*m)]])
+		self.Rnext = Rcoor+Vcurrent*T
        
 class DummyRobotSim( RobotSimInterface, WheelUncertainties ):
     def __init__(self, *args, **kw):
 	RobotSimInterface.__init__(self, *args, **kw)
-	#torque = 1
-	#WheelUncertainties.__init__(self, torque)
-	self.dNoise = 0.1
-	self.aNoise = 0.1
+	WheelUncertainties.__init__(self, torque)
+	displacement(self,theta, WP,Rcoorp, Rcoor)
+	
     
 	#slip = Checkslipping(motorspeed) # motorspeed is 4x1 vector
     
-    def move( self, dist ):
-	"""
-	Move forward some distance
-	"""
-	# Compute a vector along the forward direction
-	fwd = dot([1,-1,-1,1],self.tagPos)/2
-	# Move all tag corners forward by distance, with some noise
-	self.tagPos = self.tagPos + fwd[newaxis,:] * dist * (1+randn()*self.dNoise)
+    def move( self ):
 
-    def turn( self, angle ):
-	"""
-	Turn by some angle
-	"""
-	z = dot(self.tagPos,[1,1j])
-	c = mean(z)
-	zr = c + (z-c) * exp(1j * (angle+randn()*self.aNoise))
-	self.tagPos[:,0] = zr.real
-	self.tagPos[:,1] = zr.imag
+	# Move all tag corners forward to new R-coordinates, with some noise
+	self.tagPos = self.tagPos + (dot(np.array[[1],[1],[1],[1]],np.transpose(self.Rnex)  * (1+randn()*self.dNoise))
+
+   # def slipmove( self ):
+    	
     
     def refreshState( self ):
 	"""
