@@ -1,11 +1,12 @@
 # file simTagStreamer.py simulates a robot in an arena
 
 from sensorPlan import SensorPlan
-from robotSim import DummyRobotSim
+from robotSim import HoloRobotSim
 from joy import JoyApp, progress
 from joy.decl import *
 from waypointShared import WAYPOINT_HOST, APRIL_DATA_PORT
 
+import numpy as np
 class RobotSimulatorApp( JoyApp ):
   """Concrete class RobotSimulatorApp <<singleton>>
      A JoyApp which runs the DummyRobotSim robot model in simulation, and
@@ -24,7 +25,7 @@ class RobotSimulatorApp( JoyApp ):
     # Set up the sensor receiver plan
     self.sensor = SensorPlan(self)
     self.sensor.start()
-    self.robSim = DummyRobotSim(fn=None)
+    self.robSim = HoloRobotSim(fn=None)
     self.timeForStatus = self.onceEvery(1)
     self.timeForLaser = self.onceEvery(1/15.0)
     self.timeForFrame = self.onceEvery(1/20.0)
@@ -68,7 +69,7 @@ class RobotSimulatorApp( JoyApp ):
       self.emitTagMessage()
 
     if self.timeForFeedback():
-	self.robSim.computeStep((0,0))
+	self.robSim.computeStep(np.array([[440],[320]]))
 
     #"	
     #if evt.type == KEYDOWN:

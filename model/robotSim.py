@@ -12,6 +12,7 @@ from numpy.linalg import inv
 from numpy.random import randn
 from waypointShared import *
 
+import random
 from pdb import set_trace as DEBUG
 
 import numpy as np
@@ -180,7 +181,7 @@ class RobotSimInterface( object ):
     if self.out:
 	self.out.write("%.2f, 1, %d, %d\n" % (now,n+1,x[0],x[1]))          
     return "Laser: %d,%d " % tuple(x)
-  
+
 class WheelUncertainties(object):
     """
     if the torque applied on the wheel is higher than the traction
@@ -232,34 +233,40 @@ class MomentOfInertia(DynamicsPoint):
 	
 # Force Class
 class PointForce(DynamicsPoint):
-    def __init__(self, center, forceVector,theta,WP):
+    def __init__(self, center, forceVector, theta, WP):
 	DynamicsPoint.__init__(self, center, forceVector)
 	self.WP = WP
 	self.theta = theta
+	self.dNoise = 0.1
 	self.Torque = []
 	self.slipTorque = []
 	self.T_dirMatrix = []
 	self.computeTorque()
 	self.slipDisplacement()
-	self.dNoise = 0.1
+
    	
     def computeTorque(self):
-    	angle_si = atan2(self.WP[1] - self.getY(), self.WP[1] - self.getX())
-    	Fx = 10*np.cos(angle_si - self.theta)
-    	Fy = 10*np.sin(angle_si - self.theta)
+    	angle_si = atan2(self.WP[1] - self.getY(), self.WP[0] - self.getX())
+    	Fx = 1000*np.cos(angle_si - self.theta)
+    	Fy = 1000*np.sin(angle_si - self.theta)
     	Force  = np.array([[Fx], [Fy], [0]])
     	self.T_dirMatrix=np.array([[1., 0.5, -0.5], [0., -np.sqrt(3)/2, np.sqrt(3)/2], [0.1,0.1,0.1]])
     	invDmatrix = np.linalg.inv(self.T_dirMatrix)
-    	self.Torque = invDmatrix*Force
-    
+    	self.Torque = np.dot(invDmatrix,Force)
+	
     def slipDisplacement(self):
-    	self.slipTorque = np.array([[(1+randn()*self.dNoise), 0, 0],[0,(1+randn()*self.dNoise), 0],[0,0,(1+randn()*self.dNoise)]])*self.Torque
- 	
+	r1 = random.gauss(0.5, self.dNoise)
+	r2 = random.gauss(0.7, self.dNoise)
+	r3 = random.gauss(0.7, self.dNoise)
+    	self.slipTorque = np.dot( np.array([ [r1, 0, 0],[0,r2, 0],[0,0,r3] ]),self.Torque)
 
 class Displacement(PointForce):
-    def __init__(self, theta, WP, Rcoorp, Rcoor):
-	forceVector = np.array(Rcoor)-np.array(WP)
+    def __init__(self, theta, WP, Rcoorp, Rcoor, forceVector):
 	PointForce.__init__(self, Rcoor, forceVector, theta, WP)
+	self.Rcoor = Rcoor
+	self.Rcoorp = Rcoorp
+	self.theta = theta
+	self.WP = WP
 	self.Rnext = []
 	self.nextR()
 		
@@ -267,28 +274,36 @@ class Displacement(PointForce):
 	T = 0.1 #0.1 is the time increment
 	m = 0.7 #mass
 	Rotation = np.array([[np.cos(self.theta), -1*np.sin(self.theta),0], [np.sin(self.theta), np.cos(self.theta),0],[0,0,1]])
-	ForceNew = Rotation * self.T_dirMatrix * self.Torque
-	Vp = (self.Rcoor - self.Rcoorp)/T 
-	Vcurrent = Vp*0.5 + np.array([[ForceNew[0]*T/(2*m)], [ForceNew[1]*T/(2*m)]])
-	self.Rnext = Rcoor+Vcurrent*T
+	ForceNew = np.dot(Rotation, np.dot(self.T_dirMatrix,self.Torque))
+	#print 'ForceNew', str(ForceNew)
+	Vp = (np.array(self.Rcoor) - np.array(self.Rcoorp))/T 
+	Vcurrent = Vp*0.01 + np.array([ForceNew[0]*T/(2*m), ForceNew[1]*T/(2*m)])
+	#print 'Vcurrent', str(Vcurrent)
+	self.deltaD = Vcurrent*T
+	self.Rnext = self.Rcoor + Vcurrent*T
 	
 class SlipDisplacement(PointForce):
-    def __init__(self,theta, WP,Rcoorp, Rcoor):
-	PointForce.__init__(center, forceVector,theta,WP)
-	self.slipRnext = []
+    def __init__(self,theta, WP, Rcoorp, Rcoor, forceVector):
+	PointForce.__init__(self, Rcoor, forceVector,theta,WP)
+	self.Rcoor = Rcoor
+	self.Rcoorp = Rcoorp
+	self.theta = theta
+	self.WP = WP
+	self.Rnext = []
 	self.slipnextR()
 		
     def slipnextR(self):
 	T = 0.1 #0.1 is the time increment
 	m = 0.7 #mass
 	Rotation = np.array([[np.cos(self.theta), -1*np.sin(self.theta),0], [np.sin(self.theta), np.cos(self.theta),0],[0,0,1]])
-	slipForceNew = Rotation * self.T_dirMatrix * self.slipTorque
-	Vp = (self.Rcoor - self.Rcoorp)/T 
-	Vcurrent = Vp*0.5 + np.array([[ForceNew[0]*T/(2*m)], [ForceNew[1]*T/(2*m)]])
-	self.slipRnext = Rcoor+Vcurrent*T
+	slipForceNew = np.dot(Rotation, np.dot(self.T_dirMatrix, self.slipTorque))
+	Vp = (np.array(self.Rcoor) - np.array(self.Rcoorp))/T 
+	Vcurrent = Vp*0.01 + np.array([slipForceNew[0]*T/(2*m), slipForceNew[1]*T/(2*m)])
+	self.deltaSlipD = Vcurrent*T
+	self.slipRnext = self.Rcoor + Vcurrent*T
 	    
 		
-class DummyRobotSim( RobotSimInterface, WheelUncertainties, VisionSim ):
+class HoloRobotSim( RobotSimInterface, WheelUncertainties, VisionSim ):
     def __init__(self, *args, **kw):
 	RobotSimInterface.__init__(self, *args, **kw)
 	tagLocations = [[-1,0,-1], [-1,0,1], [1,0,1], [1,0,-1]]
@@ -309,26 +324,42 @@ class DummyRobotSim( RobotSimInterface, WheelUncertainties, VisionSim ):
 	# Get reprojected markers
 	# Compute center, angles from markers
 	# Compute laser error and generate feedback
-	rn = randomFail(0.01)
+	rn = randomFail(1)
+	forceVector = np.array(waypoint) - np.array(centerEst)
+	#print 'F', str(forceVector)
 	if(rn == 1):
-	    d = SlipDisplacement(thetaEst, waypoint, self.previousPosition, centerEst)
+	    self.d = SlipDisplacement(thetaEst, waypoint, self.previousPosition, centerEst, forceVector)
+	    self.d.slipnextR()
+	    self.slipmove()
 	else:
-	    d = Displacement(thetaEst, waypoint, self.previousPosition, centerEst)
-	    
-	self.previousPositoin = centerEst
+	    self.d = Displacement(thetaEst, waypoint, self.previousPosition, centerEst, forceVector)
+	    self.d.nextR()
+	    self.move()
+	self.previousPosition = centerEst
 	    
     def move( self ):
+	#print 'Delta', str(self.d.deltaD)
 	# Move all tag corners forward to new R-coordinates, with some noise
-	self.tagPos = self.tagPos + (dot(np.array[[1],[1],[1],[1]],np.transpose(self.Rnex)  * (1+randn()*self.dNoise)))
+	delta = dot(np.array([[1],[1],[1],[1]]),np.transpose(self.d.deltaD)) #* (1+randn()*self.dNoise))
+	#print 'rNEXT', str(Rnext)
+	#print 'Delta', str(delta)
+	self.tagPos = self.tagPos + delta #(dot(np.array([[1],[1],[1],[1]]),np.transpose(self.d.Rnext)  * (1+randn()*self.dNoise)))
 
 	
     # Gets the sticker marker points
     def getRealMarkerPoints(self):
-	print str(self.tagPos)
-	return (1,0,0),(0,0,1),(1,0,1)
+	robotHeight = 0.089
+	rtag = [self.tagPos[0][0],robotHeight, self.tagPos[0][1]]
+	gtag = [self.tagPos[2][0],robotHeight, self.tagPos[2][1]]
+	btag = [self.tagPos[1][0],robotHeight, self.tagPos[1][1]]
+	#print str(self.tagPos)
+	#print 'rtag',str(rtag)
+	return rtag, gtag, btag
 	
     def slipmove( self ):
-    	self.tagPos = self.tagPos + (dot(np.array[[1],[1],[1],[1]],np.transpose(self.slipRnex)  * (1+randn()*self.dNoise)))
+	delta = np.dot(np.array([[1],[1],[1],[1]]),np.transpose(self.d.deltaSlipD))#  * (1+randn()*self.dNoise))
+    	#print 'Delta', str(self.d.deltaSlipD)
+    	self.tagPos = self.tagPos + delta#(dot(np.array[[1],[1],[1],[1]],np.transpose(self.d.slipRnext)  * (1+randn()*self.dNoise)))
     	
     
     def refreshState( self ):
@@ -339,8 +370,8 @@ class DummyRobotSim( RobotSimInterface, WheelUncertainties, VisionSim ):
 	Since the entire robot state is captured by the location of the
 	robot tag corners, update the laser axis from the robot tag location 
 	"""
-	self.laserAxis = dot([[1,1,0,0],[0,0,1,1]],self.tagPos)/2
-	da = dot([1,-1],self.laserAxis)
+	self.laserAxis = np.dot([[1,1,0,0],[0,0,1,1]],self.tagPos)/2
+	da = np.dot([1,-1],self.laserAxis)
 	self.laserAxis[1] += randn(2) * sqrt(sum(da*da)) * 0.01
 	
 	

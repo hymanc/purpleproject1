@@ -184,9 +184,10 @@ class VisionSim(object):
 	bCtr = points[2]
 	# TODO: Run points through vision model
 	# Compute mean of points 1 and 2
-	ctr = ((gCtr[0] + rCtr[0])/2, (gCtr[1] + rCtr[1])/2) # Compute line midpoint
-	theta = atan2(gCtr[1]-rCtr[1], gCtr[0]-rCtr[0]) # Compute base angle
-	phi = atan2(bCtr[1]-ctr[1], bCtr[0]-ctr[0]) # Compute laser angle
+	ctr = np.array([[(gCtr[0] + rCtr[0])/2],[(gCtr[2] + rCtr[2])/2]]) # Compute line midpoint
+	theta = atan2(gCtr[2]-rCtr[2], gCtr[0]-rCtr[0]) # Compute base angle
+	phi = atan2(bCtr[2]-ctr[1], bCtr[0]-ctr[0]) # Compute laser angle
+	
 	return ctr, theta, phi
 	
 
