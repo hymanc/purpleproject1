@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-import math
+from math import *
 
 # Camera Position is a 3-tuple relative to the field origin (center)
 
@@ -19,11 +19,15 @@ class VisionSim(object):
     #cameraPosition: 3-tuple; Camera origin wrt world center (assume camera is pointed at center)
     #cameraF: floating point number; Camera focal length (meters)
     #tagLocations: Boundary tag world locations (meters)
-    def __init__(self, imageSize, cameraPosition, cameraF, tagLocations):
+    def __init__(self, imageSize, cameraPosition, cameraTilt, cameraF, tagLocations, robotHeight):
 	self.imageSize = imageSize
 	self.cameraPosition = cameraPosition
+	self.cameraTilt = cameraTilt
 	self.tagLocations = tagLocations
+	self.worldToCameraRigid()
+	self.cameraToWorldRigid()
 	self.pinholeCameraMatrix(cameraF)
+	self.robotHeight = robotHeight
 	imTagCoord = self.computeImageCoordinates(tagLocations)
 	self.computePerspectiveRectification(tagLocations, imTagCoord)
 	# Get tag x,y locations, convert to real space
@@ -32,16 +36,47 @@ class VisionSim(object):
     @staticmethod
     def defaultSim():
 	tagLocations = [[-1,0,-1], [-1,0,1], [1,0,1], [1,0,-1]]
-	return VisionSim((960,720), (0,0,0), 2E-3, tagLocations)
+	defaultHeight = 0.09 #Approx 3.5" for tag height
+	focalLength = 2E-3
+	return VisionSim((960,720), (0,1,1), pi/4, focalLength, tagLocations, defaultHeight)
+	
+    # Rigid transform between world frame and camera frame
+    def worldToCameraRigid(self):
+	t = self.cameraTilt
+	self.wtc = [
+	[1,0,0,-self.cameraPosition[0]],
+	[0,cos(t),sin(t),-self.cameraPosition[1]],
+	[0,-sin(t),cos(t),-self.cameraPosition[2]],
+	[0,0,0,1]]
+	return self.wtc
+    
+    # Rigid transform between camera frame and world frame
+    def cameraToWorldRigid(self):
+	self.ctw = np.linalg.inv(self.worldToCameraRigid())
+	return self.ctw
+    
+    # Converts a point in the world rigidframe to the camera rigid frame
+    def ptToCamera(self, point):
+	point = np.array(point)
+	point = point[np.newaxis,:].T
+	cpoint = np.dot(self.wtc, point)
+	return cpoint
+	
+    # Converts a point in the camera rigid frame to the world rigid frame
+    def ptToWorld(self, point):
+	point = np.array(point)
+	point = point[np.newaxis,:].T
+	wpoint = np.dot(self.ctw, point)
+	return wpoint
 	
     # Generates the camera matrix
     def pinholeCameraMatrix(self, f):
 	# Camera matrix = K*[R|t]
 	# Compute y-rotation
-	theta = -math.pi/2 # Camera Y-rotation
-	tx = 0		# Camera X-translation
-	ty = 0	# Camera Y-translation
-	tz = 1	# Camera Z-translation
+	#theta = self.cameraTilt # Camera Y-rotation
+	tx = self.cameraPosition[0]	# Camera X-translation
+	ty = self.cameraPosition[1]	# Camera Y-translation
+	tz = self.cameraPosition[2]	# Camera Z-translation
 	fx = f/8.85E-6  # Focal length over pixel size (meters)
 	fy = fx		# Square pixel assumption
 	cx = (self.imageSize[0])/2
@@ -50,10 +85,10 @@ class VisionSim(object):
 	# fx 0  0  cx
 	# 0  fy 0  cy
 	# 0  0  1  1 
-	K = np.array( [ [fx, 0., cx] , [0., fy, cy] , [0.,0.,1.] ] ) # Camera intrinsics
-	#Rt = np.array( [ [1., 0., 0., 0.], [0., 1., 0., 0.], [0., 0., 1., 0.] ] )
-	Rt = np.array( [ [1, 0, 0, tx] , [0,math.cos(theta),-math.sin(theta),ty] , [0,math.sin(theta),math.cos(theta),tz] ] ) # Only y-axis rotation of camera
-	self.camMatrix = np.dot(K,Rt) # Compute camera model (camMatrix)
+	self.K = np.array( [ [fx, 0., cx] , [0., fy, cy] , [0.,0.,1.] ] ) # Camera intrinsics
+	self.Rt = np.array( [ [1., 0., 0., 0.], [0., 1., 0., 0.], [0., 0., 1., 0.] ] )
+	#self.Rt = np.array( [ [1, 0, 0, tx] , [0,cos(theta),-sin(theta),ty] , [0,sin(theta),cos(theta),tz] ] ) # Only y-axis rotation of camera
+	self.camMatrix = np.dot(self.K,self.Rt) # Compute camera model (camMatrix)
 	
     # Computes a perspective rectification 
     # worldCorr: World correspondence points (on the plane)
@@ -66,8 +101,14 @@ class VisionSim(object):
 	i = 0
 	for coord in imageCorr: # Add random noise and quantize image correspondences
 	    #coord = np.around(coord + np.random.normal(0,1,2),0) # Add noise to each point
-	    Xw = worldCorr[i][0]
-	    Yw = worldCorr[i][2]
+	    wc = self.ptToCamera(worldCorr[i])
+	    #wc = np.array(worldCorr[i])
+	    #wc = wc[np.newaxis,:].T
+	    #wc = np.dot(self.wtc, wc)
+	    #Xw = worldCorr[i][0]
+	    #Yw = worldCorr[i][2]
+	    Xw = float(wc[0])
+	    Yw = float(wc[1])
 	    xi = np.around(coord[0] + np.random.normal(0,1,1),0)[0]
 	    yi = np.around(coord[1] + np.random.normal(0,1,1),0)[0]
 	    an1 = [xi,yi,1.,0.,0.,0.,-Xw*xi,-Xw*yi] # Add correspondences to matrix
@@ -99,8 +140,9 @@ class VisionSim(object):
 	i = 0
 	for coord in worldCoordinates:
 	    coord.append(1)
-	    wc = np.array(coord)
-	    wc = wc[np.newaxis, :].T
+	    wc = self.ptToCamera(coord)
+	    #wc = np.array(coord)
+	    #wc = wc[np.newaxis, :].T
 	    imgPt = np.dot(self.camMatrix, wc)
 	    imgPt = np.around(imgPt,0) # Quantize
 	    iCoords.append(imgPt)
@@ -117,16 +159,36 @@ class VisionSim(object):
 	    c = coord[np.newaxis, :].T
 	    estPt = np.dot(self.perspectiveTf, c)
 	    estPt = np.around(estPt, 3) # Estimated quantization from remapping
-	    weCoords.append(estPt[0:2])
+	    estPt = np.append(estPt,[[1]])
+	    estPt.reshape((4,1))
+	    estPt = self.ptToWorld(estPt)# Handle camera translation/rotation
+	    print 'Est Pt:',str(estPt)
+	    weCoords.append([estPt[0],estPt[2]])
 	    i = i + 1
 	return weCoords
     
     # Converts a world point into an estimated world point (w/ noise)
     def computeRemappedCoordinate(self, worldCoordinates, noiseSigma):
-	imgCoords = computeImageCoordinates(worldCoordinates) # Compute and quantize image coordinates
-	weCoords = computeImgToWorldEstimate(imgCoords) # Reproject using rectification transform and quantize
+	print str(worldCoordinates)
+	imgCoords = self.computeImageCoordinates(worldCoordinates) # Compute and quantize image coordinates
+	weCoords = self.computeImageToWorldEstimate(imgCoords) # Reproject using rectification transform and quantize
 	for coord in weCoords: # Additive Gaussian noise
 	    coord[0] = coord[0] + np.random.normal(0, noiseSigma, 1)
 	    coord[1] = coord[1] + np.random.normal(0, noiseSigma, 1)
 	return weCoords
+    
+    # From 3 points, estimate center, theta (base rotation), phi (absolute laser rotation)
+    def estimateState(self, points):
+	gCtr = points[0]
+	rCtr = points[1]
+	bCtr = points[2]
+	# TODO: Run points through vision model
+	# Compute mean of points 1 and 2
+	ctr = ((gCtr[0] + rCtr[0])/2, (gCtr[1] + rCtr[1])/2) # Compute line midpoint
+	theta = atan2(gCtr[1]-rCtr[1], gCtr[0]-rCtr[0]) # Compute base angle
+	phi = atan2(bCtr[1]-ctr[1], bCtr[0]-ctr[0]) # Compute laser angle
+	return ctr, theta, phi
+	
+
+    
     

@@ -28,6 +28,7 @@ class RobotSimulatorApp( JoyApp ):
     self.timeForStatus = self.onceEvery(1)
     self.timeForLaser = self.onceEvery(1/15.0)
     self.timeForFrame = self.onceEvery(1/20.0)
+    self.timeForFeedback = self.onceEvery(1/10.0)
     self.timeForDynamics = self.onceEvery(1/50.0)
     progress("Using %s:%d as the waypoint host" % self.srvAddr)
 
@@ -52,7 +53,7 @@ class RobotSimulatorApp( JoyApp ):
     self.sensor.sendto(msg, self.srvAddr)
     
   def slip ( self, evt ):
-    
+    a = 0
       
     
   def onEvent( self, evt ):
@@ -66,25 +67,29 @@ class RobotSimulatorApp( JoyApp ):
     if self.timeForFrame(): 
       self.emitTagMessage()
 
-    if evt.type == KEYDOWN:
-      #slip event
-      if  evt.key == K_s:
-        self.robSim.slipmove()
-      elif evt.key == K_m:
-        if evt.key == K_UP:
-          self.robSim.move(0.5)
-          return progress("(say) Move forward")
-        elif evt.key == K_DOWN:
-          self.robSim.move(-0.5)
-          return progress("(say) Move back")
-        elif evt.key == K_LEFT:
-          self.robSim.turn(-0.5)
-          return progress("(say) Turn left")
-        elif evt.key == K_RIGHT:
-          self.robSim.turn(0.5)
-          return progress("(say) Turn right")
-      elif
-        self.robSim.move()
+    if self.timeForFeedback():
+	self.robSim.computeStep((0,0))
+
+    #"	
+    #if evt.type == KEYDOWN:
+    #  #slip event
+    #  if  evt.key == K_s:
+    #	self.robSim.slipmove()
+    #  elif evt.key == K_m:
+    #if evt.key == K_UP:
+    #      self.robSim.move(0.5)
+    #      return progress('(say) Move forward')
+    #    elif evt.key == K_DOWN:
+    #      self.robSim.move(-0.5)
+    #      return progress('(say) Move back')
+    #    elif evt.key == K_LEFT:
+    #      self.robSim.turn(-0.5)
+    #      return progress('(say) Turn left')
+    #    elif evt.key == K_RIGHT:
+    #      self.robSim.turn(0.5)
+    #      return progress('(say) Turn right')
+    #  else:
+    #    self.robSim.move()
         
     # Use superclass to show any other events
     return JoyApp.onEvent(self,evt)
