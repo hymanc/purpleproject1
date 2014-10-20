@@ -136,8 +136,10 @@ class RobotSimInterface( object ):
     """
     # Initialize dummy values into robot and arena state
     self.tagPos = asfarray(MSG_TEMPLATE[ ROBOT_TAGID[0]])
+    self.tagPos = asfarray(MSG_TEMPLATE[0])
     self.laserAxis = dot([[1,1,0,0],[0,0,1,1]],self.tagPos)/2
     self.waypoints = { tid : asfarray(MSG_TEMPLATE[tid]) for tid in waypoints }
+    self.waypointCount = 0
     ### Initialize internal variables
     # Two points on the laser screen
     self.laserScreen = asfarray([[-1,-1],[1,-1]])
@@ -244,11 +246,10 @@ class PointForce(DynamicsPoint):
 	self.computeTorque()
 	self.slipDisplacement()
 
-   	
     def computeTorque(self):
     	angle_si = atan2(self.WP[1] - self.getY(), self.WP[0] - self.getX())
-    	Fx = 1000*np.cos(angle_si - self.theta)
-    	Fy = 1000*np.sin(angle_si - self.theta)
+    	Fx = 100*np.cos(angle_si - self.theta)
+    	Fy = 100*np.sin(angle_si - self.theta)
     	Force  = np.array([[Fx], [Fy], [0]])
     	self.T_dirMatrix=np.array([[1., 0.5, -0.5], [0., -np.sqrt(3)/2, np.sqrt(3)/2], [0.1,0.1,0.1]])
     	invDmatrix = np.linalg.inv(self.T_dirMatrix)
@@ -273,14 +274,18 @@ class Displacement(PointForce):
     def nextR(self):
 	T = 0.1 #0.1 is the time increment
 	m = 0.7 #mass
+	I = 0.1 # moment of inertia
 	Rotation = np.array([[np.cos(self.theta), -1*np.sin(self.theta),0], [np.sin(self.theta), np.cos(self.theta),0],[0,0,1]])
 	ForceNew = np.dot(Rotation, np.dot(self.T_dirMatrix,self.Torque))
 	#print 'ForceNew', str(ForceNew)
 	Vp = (np.array(self.Rcoor) - np.array(self.Rcoorp))/T 
 	Vcurrent = Vp*0.01 + np.array([ForceNew[0]*T/(2*m), ForceNew[1]*T/(2*m)])
+	wCurrent = ForceNew[2]*(T/I)
 	#print 'Vcurrent', str(Vcurrent)
 	self.deltaD = Vcurrent*T
+	self.deltaTheta = wCurrent*T
 	self.Rnext = self.Rcoor + Vcurrent*T
+	self.TNext = self.theta + wCurrent*T
 	
 class SlipDisplacement(PointForce):
     def __init__(self,theta, WP, Rcoorp, Rcoor, forceVector):
@@ -295,12 +300,16 @@ class SlipDisplacement(PointForce):
     def slipnextR(self):
 	T = 0.1 #0.1 is the time increment
 	m = 0.7 #mass
+	I = 0.1 # moment of inertia
 	Rotation = np.array([[np.cos(self.theta), -1*np.sin(self.theta),0], [np.sin(self.theta), np.cos(self.theta),0],[0,0,1]])
 	slipForceNew = np.dot(Rotation, np.dot(self.T_dirMatrix, self.slipTorque))
 	Vp = (np.array(self.Rcoor) - np.array(self.Rcoorp))/T 
 	Vcurrent = Vp*0.01 + np.array([slipForceNew[0]*T/(2*m), slipForceNew[1]*T/(2*m)])
+	wCurrent = slipForceNew[2]*(T/I)
 	self.deltaSlipD = Vcurrent*T
+	self.deltaTheta = wCurrent*T
 	self.slipRnext = self.Rcoor + Vcurrent*T
+	self.slipTNext = self.theta + wCurrent*T
 	    
 		
 class HoloRobotSim( RobotSimInterface, WheelUncertainties, VisionSim ):
@@ -317,15 +326,19 @@ class HoloRobotSim( RobotSimInterface, WheelUncertainties, VisionSim ):
 	self.laserAngle = 0
 	#slip = Checkslipping(motorspeed) # motorspeed is 4x1 vector
     
-    def computeStep(self, waypoint):
+    def computeStep(self):
 	print 'Computing step'
 	markerPoints = self.getRealMarkerPoints()# Get actual marker points
 	centerEst, thetaEst, phiEst = self.estimateState(markerPoints)
 	# Get reprojected markers
 	# Compute center, angles from markers
 	# Compute laser error and generate feedback
+	waypoint = self.getWaypointCoordinate(self.getNextWaypoint())
 	rn = randomFail(1)
 	forceVector = np.array(waypoint) - np.array(centerEst)
+	if(np.linalg.norm(centerEst - waypoint) < 20):
+	    self.waypointCount = self.waypointCount + 1
+	    waypoint = self.getWaypointCoordinate(self.getNextWaypoint())
 	#print 'F', str(forceVector)
 	if(rn == 1):
 	    self.d = SlipDisplacement(thetaEst, waypoint, self.previousPosition, centerEst, forceVector)
@@ -335,6 +348,7 @@ class HoloRobotSim( RobotSimInterface, WheelUncertainties, VisionSim ):
 	    self.d = Displacement(thetaEst, waypoint, self.previousPosition, centerEst, forceVector)
 	    self.d.nextR()
 	    self.move()
+	self.rotate(self.d.deltaTheta)
 	self.previousPosition = centerEst
 	    
     def move( self ):
@@ -356,12 +370,19 @@ class HoloRobotSim( RobotSimInterface, WheelUncertainties, VisionSim ):
 	#print 'rtag',str(rtag)
 	return rtag, gtag, btag
 	
+    def rotate( self, angle ):
+	z = dot(self.tagPos,[1,1j])
+	c = mean(z)
+	print c, z
+	zr = c + (z-c) * np.exp(1j * (angle))
+	self.tagPos[:,0] = zr.real
+	self.tagPos[:,1] = zr.imag
+    
     def slipmove( self ):
 	delta = np.dot(np.array([[1],[1],[1],[1]]),np.transpose(self.d.deltaSlipD))#  * (1+randn()*self.dNoise))
     	#print 'Delta', str(self.d.deltaSlipD)
     	self.tagPos = self.tagPos + delta#(dot(np.array[[1],[1],[1],[1]],np.transpose(self.d.slipRnext)  * (1+randn()*self.dNoise)))
     	
-    
     def refreshState( self ):
 	"""
 	Make state ready for use by client.
@@ -374,6 +395,18 @@ class HoloRobotSim( RobotSimInterface, WheelUncertainties, VisionSim ):
 	da = np.dot([1,-1],self.laserAxis)
 	self.laserAxis[1] += randn(2) * sqrt(sum(da*da)) * 0.01
 	
+    def getNextWaypoint(self):
+	print 'Next waypoint: 0'
+	return self.waypoints[self.waypointCount]
+    #
+    def getWaypointCoordinate(self, waypointBounds):
+	count = 0
+	xsum = 0
+	ysum = 0
+	for pt in waypointBounds:
+	    xsum = xsum + pt[0]
+	    ysum = ysum + pt[1]
+	    count = count + 1
+	return [[xsum/count],[ysum/count]]
 	
-    
     

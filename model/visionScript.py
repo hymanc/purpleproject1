@@ -9,14 +9,14 @@ from math import *
 tagLocations = [[-1,0,-1], [-1,0,1], [1,0,1], [1,0,-1]]
 defaultHeight = 0.09 #Approx 3.5" for tag height
 focalLength = 2E-3
-vsim = VisionSim((960,720), (0,1.5,1.5), pi/4, focalLength, tagLocations, defaultHeight)
+vsim = VisionSim((960,720), (0,1.5,-1.5), 0.4*pi, focalLength, tagLocations, defaultHeight)
 
 
 corners = [ [-1,0,-1], [-1,0,1], [1,0,1], [1,0,-1] ]
 
 icoords = vsim.computeImageCoordinates(corners)
 weCoords = vsim.computeImageToWorldEstimate(icoords)
-itcoord = [-1,0,-1]
+itcoord = [1,0.0,1]
 tcoord = vsim.computeRemappedCoordinate([itcoord], 0.00001)
 for coord in weCoords:
     print 'Result', coord

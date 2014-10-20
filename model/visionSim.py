@@ -43,16 +43,23 @@ class VisionSim(object):
     # Rigid transform between world frame and camera frame
     def worldToCameraRigid(self):
 	t = self.cameraTilt
-	self.wtc = [
-	[1,0,0,-self.cameraPosition[0]],
-	[0,cos(t),sin(t),-self.cameraPosition[1]],
-	[0,-sin(t),cos(t),-self.cameraPosition[2]],
-	[0,0,0,1]]
+	#self.wtc = [
+	#[1,0,0,-self.cameraPosition[0]],
+	#[0,cos(t),sin(t),-self.cameraPosition[1]],
+	#[0,-sin(t),cos(t),-self.cameraPosition[2]],
+	#[0,0,0,1]]
+	self.wtc = np.linalg.inv(self.cameraToWorldRigid())
 	return self.wtc
     
     # Rigid transform between camera frame and world frame
     def cameraToWorldRigid(self):
-	self.ctw = np.linalg.inv(self.worldToCameraRigid())
+	#self.ctw = np.linalg.inv(self.worldToCameraRigid())
+	t = self.cameraTilt
+	self.ctw = [
+	[1,0,0,self.cameraPosition[0]],
+	[0,cos(t),-sin(t),self.cameraPosition[1]],
+	[0,sin(t),cos(t),self.cameraPosition[2]],
+	[0,0,0,1]]
 	return self.ctw
     
     # Converts a point in the world rigidframe to the camera rigid frame

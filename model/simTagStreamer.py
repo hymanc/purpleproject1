@@ -69,7 +69,7 @@ class RobotSimulatorApp( JoyApp ):
       self.emitTagMessage()
 
     if self.timeForFeedback():
-	self.robSim.computeStep(np.array([[440],[320]]))
+	self.robSim.computeStep()
 
     #"	
     #if evt.type == KEYDOWN:
