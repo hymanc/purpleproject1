@@ -226,7 +226,11 @@ class PointForce(DynamicsPoint):
     def __init__(self, center, forceVector,theta,WP):
 	DynamicsPoint.__init__(center, forceVector)
 	self.Torque = []
+	self.slipTorque = []
         self.T_dirMatrix = []
+   	self.computeTorque()
+   	self.slipDisplacement()
+   	self.dNoise = 0.1
    	
     def computeTorque(self):
 	
@@ -237,29 +241,48 @@ class PointForce(DynamicsPoint):
     	self.T_dirMatrix=np.array([[1., 0.5, -0.5], [0., -np.sqrt(3)/2, np.sqrt(3)/2], [0.1,0.1,0.1]])
     	invDmatrix = numpy.linalg.inv(self.T_dirMatrix)
     	self.Torque = invDmatrix*Force
-    	
- 
+    
+    def slipDisplacement(self):
+    	self.slipTorque = np.array([[(1+randn()*self.dNoise), 0, 0],[0,(1+randn()*self.dNoise), 0],[0,0,(1+randn()*self.dNoise)]])*self.Torque
+ 	
 
 class displacement(PointForce):
 	def __init__(self,theta, WP,Rcoorp, Rcoor):
 		PointForce.__init__(center, forceVector,theta,WP)
 		self.Rnext = []
-	    
+		self.nextR()
+		
 	def nextR(self):
 		T = 0.1 #0.1 is the time increment
-		m = ? #mass
+		m = 0.7 #mass
 		Rotation = np.array([[np.cos(self.theta), -1*np.sin(self.theta),0], [np.sin(self.theta), np.cos(self.theta),0],[0,0,1]])
 		ForceNew = Rotation * self.T_dirMatrix * self.Torque
 		Vp = (self.Rcoor - self.Rcoorp)/T 
 		Vcurrent = Vp*0.5 + np.array([[ForceNew[0]*T/(2*m)], [ForceNew[1]*T/(2*m)]])
 		self.Rnext = Rcoor+Vcurrent*T
-       
+		
+class slipDisplacement(PointForce)
+       def __init__(self,theta, WP,Rcoorp, Rcoor):
+		PointForce.__init__(center, forceVector,theta,WP)
+		self.slipRnext = []
+		self.slipnextR()
+		
+	def slipnextR(self):
+		T = 0.1 #0.1 is the time increment
+		m = 0.7 #mass
+		Rotation = np.array([[np.cos(self.theta), -1*np.sin(self.theta),0], [np.sin(self.theta), np.cos(self.theta),0],[0,0,1]])
+		slipForceNew = Rotation * self.T_dirMatrix * self.slipTorque
+		Vp = (self.Rcoor - self.Rcoorp)/T 
+		Vcurrent = Vp*0.5 + np.array([[ForceNew[0]*T/(2*m)], [ForceNew[1]*T/(2*m)]])
+		self.slipRnext = Rcoor+Vcurrent*T
+		
+		
 class DummyRobotSim( RobotSimInterface, WheelUncertainties ):
     def __init__(self, *args, **kw):
 	RobotSimInterface.__init__(self, *args, **kw)
 	WheelUncertainties.__init__(self, torque)
 	displacement(self,theta, WP,Rcoorp, Rcoor)
-	
+	self.dNoise = 0.1
     
 	#slip = Checkslipping(motorspeed) # motorspeed is 4x1 vector
     
@@ -268,7 +291,7 @@ class DummyRobotSim( RobotSimInterface, WheelUncertainties ):
 	# Move all tag corners forward to new R-coordinates, with some noise
 	self.tagPos = self.tagPos + (dot(np.array[[1],[1],[1],[1]],np.transpose(self.Rnex)  * (1+randn()*self.dNoise))
 
-   # def slipmove( self ):
+    def slipmove( self ):
     	
     
     def refreshState( self ):
