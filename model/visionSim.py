@@ -24,13 +24,14 @@ class VisionSim(object):
 	self.cameraPosition = cameraPosition
 	self.tagLocations = tagLocations
 	self.pinholeCameraMatrix(cameraF)
-	
+	imTagCoord = self.computeImageCoordinates(tagLocations)
+	self.computePerspectiveRectification(tagLocations, imTagCoord)
 	# Get tag x,y locations, convert to real space
 	#self.computePerspectiveRectification()
 	
     @staticmethod
     def defaultSim():
-	tagLocations = [(-1,-1), (-1,1), (1,1), (1,-1)]
+	tagLocations = [[-1,0,-1], [-1,0,1], [1,0,1], [1,0,-1]]
 	return VisionSim((960,720), (0,0,0), 2E-3, tagLocations)
 	
     # Generates the camera matrix
@@ -51,10 +52,7 @@ class VisionSim(object):
 	# 0  0  1  1 
 	K = np.array( [ [fx, 0., cx] , [0., fy, cy] , [0.,0.,1.] ] ) # Camera intrinsics
 	#Rt = np.array( [ [1., 0., 0., 0.], [0., 1., 0., 0.], [0., 0., 1., 0.] ] )
-	#print str(K)
-	#print str(Rt)
 	Rt = np.array( [ [1, 0, 0, tx] , [0,math.cos(theta),-math.sin(theta),ty] , [0,math.sin(theta),math.cos(theta),tz] ] ) # Only y-axis rotation of camera
-	print str(Rt)
 	self.camMatrix = np.dot(K,Rt) # Compute camera model (camMatrix)
 	
     # Computes a perspective rectification 
@@ -63,11 +61,34 @@ class VisionSim(object):
     def computePerspectiveRectification(self, worldCorr, imageCorr):
 	# Get 8 boundary centers
 	# Add noise to each point (vary by <10px)
-	# TODO: Remove OpenCV dependency
+	A = []
+	b = []
+	i = 0
 	for coord in imageCorr: # Add random noise and quantize image correspondences
-	    coord = around(coord + np.random.normal(0,1,2),0)
-	    # Add noise to each point
-	self.perspectiveTf = cv2.getPerspectiveTransform(imageCorr, worldCorr) # Use opencv to compute LS solution
+	    #coord = np.around(coord + np.random.normal(0,1,2),0) # Add noise to each point
+	    Xw = worldCorr[i][0]
+	    Yw = worldCorr[i][2]
+	    xi = np.around(coord[0] + np.random.normal(0,1,1),0)[0]
+	    yi = np.around(coord[1] + np.random.normal(0,1,1),0)[0]
+	    an1 = [xi,yi,1.,0.,0.,0.,-Xw*xi,-Xw*yi] # Add correspondences to matrix
+	    an2 = [0.,0.,0.,xi,yi,1.,-Yw*xi,-Yw*yi]
+	    bn1 = [Xw]
+	    bn2 = [Yw]
+	    A.append(an1)
+	    A.append(an2)
+	    b.append(bn1)
+	    b.append(bn2)
+	    i = i + 1
+	#self.perspectiveTf = cv2.getPerspectiveTransform(imageCorr, worldCorr) # Old opencv dependency
+	# Least squares solution Ax=B
+	A = np.array(A)
+	x = np.linalg.solve(A,b)
+	r1 = x[0:3]
+	r2 = x[3:6]
+	r3 = x[6:8]
+	r3 = np.append(r3, [1])
+	#r3.append(1)
+	self.perspectiveTf = [r1, r2, r3]
 	return self.perspectiveTf
 	
     # Convert points from worldCoordinates to image coordinates
@@ -80,24 +101,23 @@ class VisionSim(object):
 	    coord.append(1)
 	    wc = np.array(coord)
 	    wc = wc[np.newaxis, :].T
-	    print 'WC:', str(wc)
-	    print str(self.camMatrix)
 	    imgPt = np.dot(self.camMatrix, wc)
 	    imgPt = np.around(imgPt,0) # Quantize
 	    iCoords.append(imgPt)
 	    i = i + 1
-	print str(iCoords)
 	return iCoords
 	# Compute image coordinate with quantization
 	
     # Image to world estimate coordinate transform with quantization (no added noise)
-    def computeImgToWorldEstimate(self, imgCoordinates):
+    def computeImageToWorldEstimate(self, imgCoordinates):
 	weCoords = []
 	i = 0
 	for coord in imgCoordinates:
-	    estPt = np.dot(self.perspectiveTf, np.array(coord.append(1)).transpose())
+	    #c = np.append(coord, [1])
+	    c = coord[np.newaxis, :].T
+	    estPt = np.dot(self.perspectiveTf, c)
 	    estPt = np.around(estPt, 3) # Estimated quantization from remapping
-	    weCoords[i] = estPt
+	    weCoords.append(estPt[0:2])
 	    i = i + 1
 	return weCoords
     
