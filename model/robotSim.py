@@ -250,16 +250,17 @@ class PointForce(DynamicsPoint):
     	angle_si = atan2(self.WP[1] - self.getY(), self.WP[0] - self.getX())
     	Fx = 100*np.cos(angle_si - self.theta)
     	Fy = 100*np.sin(angle_si - self.theta)
-    	Force  = np.array([[Fx], [Fy], [0]])
+    	Tau = -10*self.theta
+    	Force  = np.array([[Fx], [Fy], [Tau]])
     	self.T_dirMatrix=np.array([[1., 0.5, -0.5], [0., -np.sqrt(3)/2, np.sqrt(3)/2], [0.1,0.1,0.1]])
     	invDmatrix = np.linalg.inv(self.T_dirMatrix)
-    	self.Torque = np.dot(invDmatrix,Force)
+    	self.Torque = np.dot(invDmatrix,Force) # Motor torque commands
 	
     def slipDisplacement(self):
-	r1 = random.gauss(0.5, self.dNoise)
+	r1 = random.gauss(0.3, self.dNoise)
 	r2 = random.gauss(0.7, self.dNoise)
 	r3 = random.gauss(0.7, self.dNoise)
-    	self.slipTorque = np.dot( np.array([ [r1, 0, 0],[0,r2, 0],[0,0,r3] ]),self.Torque)
+    	self.slipTorque = np.dot( np.array([ [r1, 0, 0],[0,r2, 0],[0,0,r3] ]),self.Torque) # Motor torque commands
 
 class Displacement(PointForce):
     def __init__(self, theta, WP, Rcoorp, Rcoor, forceVector):
@@ -343,7 +344,7 @@ class HoloRobotSim( RobotSimInterface, WheelUncertainties ):
 	# Compute center, angles from markers
 	# Compute laser error and generate feedback
 	waypoint = self.getTagCoordinate(self.getNextWaypoint())
-	rn = randomFail(0.5)
+	rn = randomFail(0.3)
 	forceVector = np.array(waypoint) - np.array(centerEst)
 	if(np.linalg.norm(centerEst - waypoint) < 20):
 	    self.waypointCount = self.waypointCount + 1

@@ -16,7 +16,7 @@ corners = [ [-100,0,-100], [-100,0,100], [100,0,100], [100,0,-100] ]
 
 icoords = vsim.computeImageCoordinates(corners)
 weCoords = vsim.computeImageToWorldEstimate(icoords)
-itcoord = [-100,0,100]
+itcoord = [-100,0,-100]
 tcoord = vsim.computeRemappedCoordinate([itcoord], 0.00001)
 for coord in weCoords:
     print 'Result', coord
