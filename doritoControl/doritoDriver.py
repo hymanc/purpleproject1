@@ -25,7 +25,8 @@ class DoritoDriver ( JoyApp ):
 	#self.dMot = [self.c.at.Nx03, self.c.at.Nx04, self.c.at.Nx0B]	# Drive motors
 	#self.lMot = self.c.at.Nx08					# Laser Turret
 	self.watchdogTime = self.onceEvery(4)
-	
+	self.controls = {'up':False, 'down':False, 'left':False, 'right':False, 'cw':False, 'ccw':False}
+		 
 	
     # Sets the desired linear and angular velocity
     # Use this function to move the robot
@@ -73,6 +74,26 @@ class DoritoDriver ( JoyApp ):
 	F = np.array([ [Fx1,Fx2,Fx3] , [Fy1,Fy2,Fy3], [-1,-1,-1] ])
 	return np.dot(R,F) #Planar Force/Torque translation matrix in world frame
 	
+    def _parseControls(self):
+	f = np.array((0,0))
+	t = 0
+	print 'Controls: ', self.controls
+	if(self.controls['up']):
+	    f = f + np.array((0, 1))
+	if(self.controls['down']):
+	    f = f + np.array((0, -1))
+	if(self.controls['left']):
+	    f = f + np.array((-1, 0))
+	if(self.controls['right']):
+	    f = f + np.array((1, 0))
+	if(self.controls['ccw']):
+	    t = t + 1
+	if(self.controls['cw']):
+	    t = t - 1
+	print 'Controls parsed',np.asarray(f),t
+	self.setSpeed(np.asarray(f), t)
+	    
+	
     # Sets state vector
     def setState(self, state):
 	self.state = state
@@ -117,54 +138,60 @@ class DoritoDriver ( JoyApp ):
 	    
 	if evt.type == KEYUP:
 	    self.watchdogTick = 2
-	    if evt.key == K_a:
-		self._setMotorCommand(self.c.at.D0,0)
-	    elif evt.key == K_z:
-		self._setMotorCommand(self.c.at.D0,0)
-	    elif evt.key == K_f:
-		self._setMotorCommand(self.c.at.D1,0)
-	    elif evt.key == K_v:
-		self._setMotorCommand(self.c.at.D1,0)
-	    elif evt.key == K_j:
-		self._setMotorCommand(self.c.at.D2,0)
-	    elif evt.key == K_m:
-		self._setMotorCommand(self.c.at.D2,0)
-	    elif evt.key == K_UP or \
+	    if evt.key == K_UP:
+		self.controls['up'] = False
+		#self.setSpeed((0,1),0)
+	    elif evt.key == K_DOWN:
+		self.controls['down'] = False
+		#self.setSpeed((0,-1),0)
+	    elif evt.key == K_LEFT:
+		self.controls['left'] = False
+		#self.setSpeed((-1,0),0)
+	    elif evt.key == K_RIGHT:
+		self.controls['right'] = False
+		#self.setSpeed((1,0),0)
+	    elif evt.key == K_PAGEUP:
+		self.controls['ccw'] = False
+		#self.setSpeed((0,0),1)
+	    elif evt.key == K_PAGEDOWN:
+		self.controls['cw'] = False
+		#self.setSpeed((0,0),-1)
+	    self._parseControls()
+	    '''
+	    if evt.key == K_UP or \
 	    evt.key == K_DOWN or \
 	    evt.key == K_LEFT or \
 	    evt.key == K_RIGHT or \
 	    evt.key == K_PAGEUP or \
 	    evt.key == K_PAGEDOWN:
 		self.setDriveMotorCommands([0,0,0])
-		
+	    '''
 
 	if evt.type == KEYDOWN:
 	    self.watchdogTick = 2
-	    if evt.key == K_a:
-		self._setMotorCommand(self.c.at.D0,0.8)
-	    elif evt.key == K_z:
-		self._setMotorCommand(self.c.at.D0,-0.8)
-	    elif evt.key == K_j:
-		self._setMotorCommand(self.c.at.D2,0.8)
-	    elif evt.key == K_m:
-		self._setMotorCommand(self.c.at.D2,-0.8)
-	    elif evt.key == K_f:
-		self._setMotorCommand(self.c.at.D1,0.8)
-	    elif evt.key == K_v:
-		self._setMotorCommand(self.c.at.D1,-0.8)
-	    elif evt.key == K_UP:
-		self.setSpeed((0,1),0)
+	   
+	    if evt.key == K_UP:
+		self.controls['up'] = True
+		#self.setSpeed((0,1),0)
 	    elif evt.key == K_DOWN:
-		self.setSpeed((0,-1),0)
+		self.controls['down'] = True
+		#self.setSpeed((0,-1),0)
 	    elif evt.key == K_LEFT:
-		self.setSpeed((-1,0),0)
+		self.controls['left'] = True
+		#self.setSpeed((-1,0),0)
 	    elif evt.key == K_RIGHT:
-		self.setSpeed((1,0),0)
+		self.controls['right'] = True
+		#self.setSpeed((1,0),0)
 	    elif evt.key == K_PAGEUP:
-		self.setSpeed((0,0),1)
+		self.controls['ccw'] = True
+		#self.setSpeed((0,0),1)
 	    elif evt.key == K_PAGEDOWN:
-		self.setSpeed((0,0),-1)
-		
+		self.controls['cw'] = True
+		#self.setSpeed((0,0),-1)
+	    self._parseControls()
+	    
+	
+	
 	# Use superclass to show any other events
 	return JoyApp.onEvent(self,evt)
     
