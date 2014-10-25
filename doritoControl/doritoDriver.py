@@ -19,7 +19,7 @@ class DoritoDriver ( JoyApp ):
 	self.c.populate(4,{ 0x03 : 'D0', 0x04 : 'D1', 0x0B : 'D2', 0x08 : 'L0'} )
 	#for i in range(0,self.nservos):
 	    #self.c.populate() # node IDs of modules are stored
-	self.state = (0.,0.,0.,0.)					# State (x,y,theta,phi)
+	self.state = (0.,0., pi/2,0.)					# State (x,y,theta,phi)
 	
 	#TODO: Check for motor enumeration
 	#self.dMot = [self.c.at.Nx03, self.c.at.Nx04, self.c.at.Nx0B]	# Drive motors
@@ -53,44 +53,48 @@ class DoritoDriver ( JoyApp ):
     # Torque is a scalar
     def _generateMotorCommands(self, force, torque):
 	ftVector = np.array([ [force[0]], [force[1]], [torque] ]) # Force torque vector
-	rfi = np.linalg.inv(self._forceTorqueMatrix()) # System matrix
+	rfi = np.linalg.inv(self._forceTorqueMatrix(True)) # System matrix
 	cmds = np.dot(rfi, ftVector).reshape(3) # Motor commands as a list
-	if(abs(max(cmds)) > 1):
+	if(max(abs(cmds)) > 1):
 	    print 'Saturating commands'
-	    cmds = cmds * 1/abs(max(rawCmds)) # Keep directions but limit power
+	    cmds = cmds/(max(abs(cmds))) # Keep directions but limit power
+	print 'Motor Commands', str(cmds)
 	return np.asarray(cmds) # Return commands as array
     
     # Generates the 3x3 Force-Torque matrix rotated into the 
-    def _forceTorqueMatrix(self):
+    def _forceTorqueMatrix(self, worldFrameFlag):
 	rc = cos(self.getTheta())
 	rs = sin(self.getTheta())
-	Fx1 = -cos(pi/3) #TODO: Change force directions
+	Fx1 = -cos(pi/3) 
 	Fx2 = 1
 	Fx3 = -cos(pi/3)
 	Fy1 = -sin(pi/3) 
 	Fy2 = 0
 	Fy3 = sin(pi/3)
-	R = np.array([[rc,-rs,0],[rs,rc,0],[0,0,1]])
 	F = np.array([ [Fx1,Fx2,Fx3] , [Fy1,Fy2,Fy3], [-1,-1,-1] ])
-	return np.dot(R,F) #Planar Force/Torque translation matrix in world frame
-	
+	if(worldFrameFlag): #TODO: Actually update state
+	    R = np.array([[rc,-rs,0],[rs,rc,0],[0,0,1]])
+	    return np.dot(R,F)
+	else:
+	   return F
+
     def _parseControls(self):
-	f = np.array((0,0))
-	t = 0
+	f = np.array((0.,0.))
+	t = 0.
 	print 'Controls: ', self.controls
 	if(self.controls['up']):
-	    f = f + np.array((0, 1))
+	    f = f + np.array((0., 3.))
 	if(self.controls['down']):
-	    f = f + np.array((0, -1))
+	    f = f + np.array((0., -3.))
 	if(self.controls['left']):
-	    f = f + np.array((-1, 0))
+	    f = f + np.array((-3., 0.))
 	if(self.controls['right']):
-	    f = f + np.array((1, 0))
+	    f = f + np.array((3., 0.))
 	if(self.controls['ccw']):
-	    t = t + 1
+	    t = t + 3.
 	if(self.controls['cw']):
-	    t = t - 1
-	print 'Controls parsed',np.asarray(f),t
+	    t = t - 3.
+	print 'Controls parsed',np.asfarray(f),t
 	self.setSpeed(np.asarray(f), t)
 	    
 	
