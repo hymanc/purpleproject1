@@ -1,4 +1,4 @@
-# Python 2.7 Laserbot Vision System
+# Python 2.7 Doritobot Vision System
 # EECS 498 Purple Team, 2014
 # Written by Cody Hyman (hymanc@umich.edu)
 # Written against OpenCV 3.0.0-alpha
@@ -34,8 +34,8 @@ class VisionSystem(object):
 	VMIN = 80
 
 	#HISTORY_LENGTH = 15
-	EMPTY_KERNEL = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-	RAW_KERNEL = np.array([1, 1, 3, 5, 7, 7, 8, 10, 12, 14, 14, 18, 20, 20, 20], dtype = np.float32)
+	EMPTY_KERNEL = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+	RAW_KERNEL = np.array([1, 2, 3, 6, 8, 10, 10, 15, 18, 20], dtype = np.float32)
 	FIR_KERNEL = np.multiply(RAW_KERNEL,1/np.linalg.norm(RAW_KERNEL,1)) # Normalized kernel
 
 	def __init__(self, camera):
@@ -60,12 +60,12 @@ class VisionSystem(object):
 		    print 'ERROR: Camera ' + str(camera) + ' not opened'
 		    return False
 
-	    # Set camera autoexposure
+		# Set camera autoexposure
 		uvc.set(self.camera, uvc.EXPOSURE_AUTO, 1)
 		uvc.set(self.camera, uvc.EXPOSURE_AUTO_PRIORITY, 1)
 
-	    ### Initialize UI elements ###
-	    # Camera input window
+		### Initialize UI elements ###
+		# Camera input window
 		camWindow = cv2.namedWindow(self.CAM_FEED_NAME)
 		cv2.createTrackbar('Gain', self.CAM_FEED_NAME, 128, 255, self.gainChanged)
 		cv2.createTrackbar('Exposure', self.CAM_FEED_NAME, 1600, 2000, self.exposureChanged)
@@ -75,10 +75,6 @@ class VisionSystem(object):
 		# Rectified/Calibrated Image window
 		calWindow = cv2.namedWindow(self.CAL_NAME)
 		cv2.setMouseCallback(self.CAL_NAME, self.colorClickHandler)
-
-		# Image processing window 1
-		#procWindow1 = cv2.namedWindow(self.PROC1_NAME)
-		#cv2.createTrackbar('Threshold', self.PROC1_NAME, 0, 255, self.trackbarChangeHandler)
 		
 		# Image processing Window 2
 		procWindow2 = cv2.namedWindow(self.PROC2_NAME)
@@ -226,6 +222,11 @@ class VisionSystem(object):
 	# Exposure slider handler
 	def exposureChanged(self, exp):
 		uvc.set(self.camera, uvc.EXPOSURE_ABS, exp)
+		
+	def stop(self):
+	    self.vidcap.release()
+	    cv2.release()
+	    cv2.destroyAllWindows()
 
 # Main vision function
 def main():
