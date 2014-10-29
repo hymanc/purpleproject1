@@ -19,7 +19,7 @@ class DoritoDriver ( JoyApp ):
 	self.c.populate(4,{ 0x03 : 'D0', 0x04 : 'D1', 0x0B : 'D2', 0x08 : 'L0'} )
 	#for i in range(0,self.nservos):
 	    #self.c.populate() # node IDs of modules are stored
-	self.state = (0.,0., pi/2,0.)					# State (x,y,theta,phi)
+	self.state = (0.,0., 0.,0.)					# State (x,y,theta,phi)
 	
 	#TODO: Check for motor enumeration
 	#self.dMot = [self.c.at.Nx03, self.c.at.Nx04, self.c.at.Nx0B]	# Drive motors

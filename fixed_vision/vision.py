@@ -45,8 +45,11 @@ class VisionSystem(object):
 		self.calpts = []
 		self.XSIZE = 600
 		self.YSIZE = 600
-		self.worldpts = np.float32([[0,0],[self.XSIZE,0],[self.XSIZE,self.YSIZE],[0,self.YSIZE]])
-
+		self.x_est = -1
+		self.y_est = -1
+		self.theta_est = -1
+		#self.worldpts = np.float32([[0,0],[self.XSIZE,0],[self.XSIZE,self.YSIZE],[0,self.YSIZE]])
+		self.worldpts = np.float32([[0,self.YSIZE/2],[0,self.YSIZE],[self.XSIZE,self.YSIZE],[self.XSIZE,self.YSIZE/2]])
 		### Camera initialization ###
 		print 'Opening Camera ' + str(camera)
 		self.vidcap = cv2.VideoCapture(camera)# Open up specified camera
@@ -87,7 +90,7 @@ class VisionSystem(object):
 
 		self.xHistory = deque(self.EMPTY_KERNEL)
 		self.yHistory = deque(self.EMPTY_KERNEL)
-		self.phiHistory = deque(self.EMPTY_KERNEL)
+		self.thetaHistory = deque(self.EMPTY_KERNEL)
 
 		### Main processing loop ###
 		while(True):
@@ -105,9 +108,12 @@ class VisionSystem(object):
 				rCentroid, self.rTagImg = self.findMarker(self.warpImg, rd, 10, smin, rvmin)
 				#vu.printCentroids(gCentroid, rCentroid)
 				self.rgImg = vu.comboImage(self.gTagImg, self.rTagImg)
-				ctr, phi = vu.localizeRobot(gCentroid, rCentroid)
-				if((ctr != None) and (phi != None)):
-				    fctr, fphi = self.filterPoints(ctr, phi)
+				ctr, theta = vu.localizeRobot(gCentroid, rCentroid)
+				if((ctr != None) and (theta != None)):
+				    fctr, ftheta = self.filterPoints(ctr, theta)
+				    self.x = ctr[0]
+				    self.y = ctr[1]
+				    self.theta = ftheta
 				    vu.drawSquareMarker(self.rgImg, int(fctr[0]), int(fctr[1]), 5, (255,0,0))
 				if(gCentroid != None):
 					vu.drawSquareMarker(self.rgImg, int(gCentroid[0]), int(gCentroid[1]), 5, (255,0,0))
@@ -137,10 +143,10 @@ class VisionSystem(object):
 	def findMarker(self, image, hueCenter, hueWidth, satMin, valMin):
 		hsvImg = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 		markerImg = cv2.inRange(hsvImg, np.array([hueCenter-hueWidth/2, satMin, valMin]), np.array([hueCenter+hueWidth/2, 255, 255]))
-		cleanElement = cv2.getStructuringElement(cv2.MORPH_CROSS, (5,5))
+		cleanElement = cv2.getStructuringElement(cv2.MORPH_CROSS, (3,3))
 		markerImg = cv2.erode(markerImg, cleanElement) # Clean up marker image w/ erode-dilate-median
 		markerImg = cv2.dilate(markerImg, cleanElement)
-		markerImg = cv2.medianBlur(markerImg, 5)
+		markerImg = cv2.medianBlur(markerImg, 3)
 		mMoments = cv2.moments(markerImg) # Compute moments
 		m00 = mMoments['m00']
 		if(m00 > 0.1):
@@ -148,23 +154,28 @@ class VisionSystem(object):
 		return None, markerImg
 
 	# FIR on centers and angles
-	def filterPoints(self, ctr, phi):
-		if((ctr != None) and (phi != None)):
+	def filterPoints(self, ctr, theta):
+		if((ctr != None) and (theta != None)):
 			if(len(self.xHistory) == len(self.FIR_KERNEL)):
 				self.xHistory.popleft()
 			if(len(self.yHistory) == len(self.FIR_KERNEL)):
 				self.yHistory.popleft()
-			if(len(self.phiHistory) == len(self.FIR_KERNEL)):
-				self.phiHistory.popleft()
+			if(len(self.thetaHistory) == len(self.FIR_KERNEL)):
+				self.thetaHistory.popleft()
 			self.xHistory.append(ctr[0])
 			self.yHistory.append(ctr[1])
-			self.phiHistory.append(phi)
+			self.thetaHistory.append(theta)
 			xFilter = np.linalg.norm(np.multiply(self.FIR_KERNEL, np.array(self.xHistory)),1)
 			yFilter = np.linalg.norm(np.multiply(self.FIR_KERNEL, np.array(self.yHistory)),1)
-			phiFilter = np.linalg.norm(np.multiply(self.FIR_KERNEL, np.array(self.phiHistory)),1)
-			#print 'Filtered Phi:', phiFilter, ' Raw Phi:', phi
-			return (xFilter, yFilter), phiFilter
+			thetaFilter = np.linalg.norm(np.multiply(self.FIR_KERNEL, np.array(self.thetaHistory)),1)
+			#print 'Filtered Phi:', phiFilter, ' Raw Theta:', theta
+			return (xFilter, yFilter), thetaFilter
 
+	# Interface to get current state estimates
+	def getState(self):
+	    # Give estimated [x,y,theta]
+	    return [self.x_est, self.y_est, self.theta_est, 0] # Temporarily keep phi at 0
+	    
 	### Event Handlers ###
 	# Camera input mouseclick handler
 	def mouseClickHandler(self, event, x, y, flags, param):
@@ -216,7 +227,7 @@ class VisionSystem(object):
 	def exposureChanged(self, exp):
 		uvc.set(self.camera, uvc.EXPOSURE_ABS, exp)
 
-
+# Main vision function
 def main():
 	print 'Args:' , str(sys.argv)
 	for x in range(len(sys.argv)):
