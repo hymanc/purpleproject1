@@ -27,11 +27,11 @@ class VisionPlan( Plan ):
 	while(True):
 	    print 'Processing frame from vision system'
 	    self.vision.processFrame()
-	    yield self.forDuration(0.1)
-	    #if cv2.waitKey(20) & 0xFF == ord('q'):
-		#break
-	    #else:
-		#yield
+	    #yield self.forDuration(0.1)
+	    if cv2.waitKey(5) & 0xFF == ord('q'):
+		break
+	    else:
+		yield self.forDuration(0.05)
 	    
 
 	
