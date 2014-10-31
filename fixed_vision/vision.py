@@ -5,6 +5,7 @@
 
 import sys
 import os
+import threading
 
 import cv2
 import numpy as np
@@ -87,38 +88,40 @@ class VisionSystem(object):
 		self.yHistory = deque(self.EMPTY_KERNEL)
 		self.thetaHistory = deque(self.EMPTY_KERNEL)
 
-		### Main processing loop ###
-		while(True):
-		    frameRet, self.camImg = self.vidcap.read()
-		    self.drawCalMarkers()
-		    cv2.imshow(self.CAM_FEED_NAME, self.camImg)
-		    if(self.calstate == CalState.CALIBRATED):
-				self.remapImage() # Apply perspective warp
-				gr = cv2.getTrackbarPos('Green', self.PROC_NAME)
-				rd = cv2.getTrackbarPos('Red', self.PROC_NAME)
-				gvmin = cv2.getTrackbarPos('GCutoff', self.PROC_NAME)
-				rvmin = cv2.getTrackbarPos('RCutoff', self.PROC_NAME)
-				smin = cv2.getTrackbarPos('SatCutoff', self.PROC_NAME)
-				gCentroid, self.gTagImg = self.findMarker(self.warpImg, gr, 10, smin, gvmin)
-				rCentroid, self.rTagImg = self.findMarker(self.warpImg, rd, 10, smin, rvmin)
-				#vu.printCentroids(gCentroid, rCentroid)
-				self.rgImg = vu.comboImage(self.gTagImg, self.rTagImg)
-				ctr, theta = vu.localizeRobot(gCentroid, rCentroid)
-				if((ctr != None) and (theta != None)):
-				    fctr, ftheta = self.filterPoints(ctr, theta)
-				    self.x = ctr[0]
-				    self.y = ctr[1]
-				    self.theta = ftheta
-				    vu.drawSquareMarker(self.rgImg, int(fctr[0]), int(fctr[1]), 5, (255,0,0))
-				if(gCentroid != None):
-					vu.drawSquareMarker(self.rgImg, int(gCentroid[0]), int(gCentroid[1]), 5, (255,0,0))
-				if(rCentroid != None):
-					vu.drawSquareMarker(self.rgImg, int(rCentroid[0]), int(rCentroid[1]), 5, (255,0,0))
-				cv2.imshow(self.CAL_NAME, self.warpImg)
-				cv2.imshow(self.PROC_NAME, self.rgImg)
-		    if cv2.waitKey(20) & 0xFF == ord('q'):
-			break
-    
+	# Run vision on a frame
+	def processFrame(self):
+	### Main processing loop ###
+	#while(True):
+	    frameRet, self.camImg = self.vidcap.read()
+	    self.drawCalMarkers()
+	    cv2.imshow(self.CAM_FEED_NAME, self.camImg)
+	    if(self.calstate == CalState.CALIBRATED):
+			self.remapImage() # Apply perspective warp
+			gr = cv2.getTrackbarPos('Green', self.PROC_NAME)
+			rd = cv2.getTrackbarPos('Red', self.PROC_NAME)
+			gvmin = cv2.getTrackbarPos('GCutoff', self.PROC_NAME)
+			rvmin = cv2.getTrackbarPos('RCutoff', self.PROC_NAME)
+			smin = cv2.getTrackbarPos('SatCutoff', self.PROC_NAME)
+			gCentroid, self.gTagImg = self.findMarker(self.warpImg, gr, 10, smin, gvmin)
+			rCentroid, self.rTagImg = self.findMarker(self.warpImg, rd, 10, smin, rvmin)
+			#vu.printCentroids(gCentroid, rCentroid)
+			self.rgImg = vu.comboImage(self.gTagImg, self.rTagImg)
+			ctr, theta = vu.localizeRobot(gCentroid, rCentroid)
+			if((ctr != None) and (theta != None)):
+			    fctr, ftheta = self.filterPoints(ctr, theta)
+			    self.x = ctr[0]
+			    self.y = ctr[1]
+			    self.theta = ftheta
+			    vu.drawSquareMarker(self.rgImg, int(fctr[0]), int(fctr[1]), 5, (255,0,0))
+			if(gCentroid != None):
+				vu.drawSquareMarker(self.rgImg, int(gCentroid[0]), int(gCentroid[1]), 5, (255,0,0))
+			if(rCentroid != None):
+				vu.drawSquareMarker(self.rgImg, int(rCentroid[0]), int(rCentroid[1]), 5, (255,0,0))
+			cv2.imshow(self.CAL_NAME, self.warpImg)
+			cv2.imshow(self.PROC_NAME, self.rgImg)
+	    #if cv2.waitKey(20) & 0xFF == ord('q'):
+	    #    break
+	
 	# Use current perspective transform to remap image
 	def remapImage(self):
 		if(self.calstate == CalState.CALIBRATED):
@@ -226,7 +229,7 @@ class VisionSystem(object):
 	    cv2.release()
 	    cv2.destroyAllWindows()
 
-# Main vision function
+# Main function to run vision system as standalone
 def main():
 	print 'Args:' , str(sys.argv)
 	for x in range(len(sys.argv)):

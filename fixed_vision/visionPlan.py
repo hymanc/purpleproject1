@@ -1,10 +1,10 @@
 from vision import *
 from joy import Plan
+import cv2
 
 # Vision system as a ckbot Plan
 class VisionPlan( Plan ):
     def __init__( self, app, *arg, **kw):
-	print 'Args', str(kw)
 	self.cameraIndex = kw['camera']
 	Plan.__init__(self, app, *arg, **kw ) # Initialize Plan
 	
@@ -15,12 +15,23 @@ class VisionPlan( Plan ):
     
     # Vision plan behavior
     def behavior( self ):
-	print 'Launching Vision Plan'
-	# Check 
+	#print 'Launching Vision Plan'
 	if(self.cameraIndex):
 	    print 'Starting vision system with camera', str(self.cameraIndex)
 	    self.vision(VisionSystem(self.cameraIndex))
 	else:
 	    print 'Starting vision system with default camera'
 	    self.vision = VisionSystem(0) # start vision system
+	    
+	# Main loop
+	while(True):
+	    print 'Processing frame from vision system'
+	    self.vision.processFrame()
+	    yield self.forDuration(0.1)
+	    #if cv2.waitKey(20) & 0xFF == ord('q'):
+		#break
+	    #else:
+		#yield
+	    
+
 	
