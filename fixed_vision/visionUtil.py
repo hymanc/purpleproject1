@@ -19,9 +19,18 @@ class VisionUtil(object):
 
 	# Creates a red/green combination image from filter data
 	@staticmethod
-	def comboImage(gImg, rImg):
+	def comboImage(bImg=None, gImg=None, rImg=None, background=None):
 		zeroArr = np.zeros(gImg.shape, dtype=np.uint8)
-		combo = cv2.merge((zeroArr,gImg, rImg))
+		if(bImg == None):
+		    bImg = zeroArr
+		if(gImg == None):
+		    gImg = zeroArr
+		if(rImg == None):
+		    rImg = zeroArr
+		combo = cv2.merge((bImg, gImg, rImg))
+		if(background != None):
+		    #combo = cv2.bitwise_or(cv2.bitwise_not(cv2.bitwise_and(combo, background)), combo)
+		    combo = cv2.add(background, combo)
 		return combo
 
 	# Draws square marker on an image
@@ -32,13 +41,14 @@ class VisionUtil(object):
 
 	# Finds
 	@staticmethod
-	def localizeRobot(gCtr, rCtr):
+	def localizeRobot(gCtr = None, rCtr = None, bCtr = None, printFlag = False):
 		if((gCtr != None) and (rCtr != None)):
 			ctr = ((gCtr[0] + rCtr[0])/2, (gCtr[1] + rCtr[1])/2) # Compute line midpoint
 			theta = atan2(gCtr[1]-rCtr[1], gCtr[0]-rCtr[0]) # Compute angle
-			#ctrStr = '(' + str(round(ctr[0],1)) + ',' + str(round(ctr[1],1)) + ')'
-			#thetaStr = str(round(theta,3))
-			#print 'Center:', ctrStr, '\tTheta:', thetaStr
+			if(printFlag):
+			    ctrStr = '(' + str(round(ctr[0],1)) + ',' + str(round(ctr[1],1)) + ')'
+			    thetaStr = str(round(theta,3))
+			    print 'Center:', ctrStr, '\tTheta:', thetaStr
 			return ctr, theta
 		else:
 			return None, None

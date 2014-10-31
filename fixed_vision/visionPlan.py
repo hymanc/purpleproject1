@@ -18,14 +18,13 @@ class VisionPlan( Plan ):
 	#print 'Launching Vision Plan'
 	if(self.cameraIndex):
 	    print 'Starting vision system with camera', str(self.cameraIndex)
-	    self.vision(VisionSystem(self.cameraIndex))
+	    self.vision = VisionSystem(int(self.cameraIndex))
 	else:
 	    print 'Starting vision system with default camera'
 	    self.vision = VisionSystem(0) # start vision system
 	    
 	# Main loop
 	while(True):
-	    print 'Processing frame from vision system'
 	    self.vision.processFrame()
 	    #yield self.forDuration(0.1)
 	    if cv2.waitKey(5) & 0xFF == ord('q'):

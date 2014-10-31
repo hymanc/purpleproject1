@@ -16,7 +16,7 @@ class DoritoDriver ( JoyApp ):
 	self.nservos = 4
 	self.watchdogTick = 2
 	self.c = ckbot.logical.Cluster()
-	self.c.populate(4,{ 0x03 : 'D0', 0x04 : 'D1', 0x0B : 'D2', 0x08 : 'L0'} )
+	self.c.populate(3,{ 0x03 : 'D0', 0x04 : 'D1', 0x0B : 'D3'} )
 	#for i in range(0,self.nservos):
 	    #self.c.populate() # node IDs of modules are stored
 	self.state = (0.,0., 0.,0.)					# State (x,y,theta,phi)

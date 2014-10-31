@@ -25,6 +25,7 @@ class VisionSystem(object):
 	CAM_FEED_NAME = 'Camera Feed'
 	CAL_NAME = 'Calibrated Image'
 	PROC_NAME = 'Vision Processing'
+	CTL_NAME = 'Filter Controls'
 
 	# Constants
 	G_CENTER = 52
@@ -64,6 +65,17 @@ class VisionSystem(object):
 		uvc.set(self.camera, uvc.EXPOSURE_AUTO_PRIORITY, 1)
 
 		### Initialize UI elements ###
+		# Filter Controls Window
+		ctlWindow = cv2.namedWindow(self.CTL_NAME)
+		cv2.createTrackbar('Blue', self.CTL_NAME, 115, 255, self.trackbarChangeHandler)
+		cv2.createTrackbar('Green', self.CTL_NAME, 58, 255, self.trackbarChangeHandler) 
+		cv2.createTrackbar('Red', self.CTL_NAME, 0, 255, self.trackbarChangeHandler)
+		cv2.createTrackbar('B Cutoff', self.CTL_NAME, 80, 255, self.trackbarChangeHandler)
+		cv2.createTrackbar('G Cutoff', self.CTL_NAME, 80, 255, self.trackbarChangeHandler)
+		cv2.createTrackbar('R Cutoff', self.CTL_NAME, 100, 255, self.trackbarChangeHandler)
+		cv2.createTrackbar('Sat Cutoff', self.CTL_NAME, 100, 255, self.trackbarChangeHandler)
+		cv2.createTrackbar('Show Background', self.CTL_NAME, 1, 1, self.trackbarChangeHandler)
+		
 		# Camera input window
 		camWindow = cv2.namedWindow(self.CAM_FEED_NAME)
 		cv2.createTrackbar('Gain', self.CAM_FEED_NAME, 128, 255, self.gainChanged)
@@ -76,12 +88,8 @@ class VisionSystem(object):
 		cv2.setMouseCallback(self.CAL_NAME, self.colorClickHandler)
 		
 		# Image processing Window 2
-		procWindow2 = cv2.namedWindow(self.PROC_NAME)
-		cv2.createTrackbar('Green', self.PROC_NAME, 58, 255, self.trackbarChangeHandler) 
-		cv2.createTrackbar('Red', self.PROC_NAME, 0, 255, self.trackbarChangeHandler)
-		cv2.createTrackbar('GCutoff', self.PROC_NAME, 80, 255, self.trackbarChangeHandler)
-		cv2.createTrackbar('RCutoff', self.PROC_NAME, 100, 255, self.trackbarChangeHandler)
-		cv2.createTrackbar('SatCutoff', self.PROC_NAME, 100, 255, self.trackbarChangeHandler)
+		procWindow = cv2.namedWindow(self.PROC_NAME)
+
 
 		self.xHistory = deque(self.EMPTY_KERNEL)
 		self.yHistory = deque(self.EMPTY_KERNEL)
@@ -96,28 +104,35 @@ class VisionSystem(object):
 	    cv2.imshow(self.CAM_FEED_NAME, self.camImg)
 	    if(self.calstate == CalState.CALIBRATED):
 			self.remapImage() # Apply perspective warp
-			gr = cv2.getTrackbarPos('Green', self.PROC_NAME)
-			rd = cv2.getTrackbarPos('Red', self.PROC_NAME)
-			gvmin = cv2.getTrackbarPos('GCutoff', self.PROC_NAME)
-			rvmin = cv2.getTrackbarPos('RCutoff', self.PROC_NAME)
-			smin = cv2.getTrackbarPos('SatCutoff', self.PROC_NAME)
+			bl = cv2.getTrackbarPos('Blue', self.CTL_NAME)
+			gr = cv2.getTrackbarPos('Green', self.CTL_NAME)
+			rd = cv2.getTrackbarPos('Red', self.CTL_NAME)
+			bvmin = cv2.getTrackbarPos('B Cutoff', self.CTL_NAME)
+			gvmin = cv2.getTrackbarPos('G Cutoff', self.CTL_NAME)
+			rvmin = cv2.getTrackbarPos('R Cutoff', self.CTL_NAME)
+			smin = cv2.getTrackbarPos('Sat Cutoff', self.CTL_NAME)
+			bgroundFlag = cv2.getTrackbarPos('Show Background', self.CTL_NAME)
+			bCentroid, self.bTagImg = self.findMarker(self.warpImg, bl, 10, smin, bvmin)
 			gCentroid, self.gTagImg = self.findMarker(self.warpImg, gr, 10, smin, gvmin)
 			rCentroid, self.rTagImg = self.findMarker(self.warpImg, rd, 10, smin, rvmin)
 			#vu.printCentroids(gCentroid, rCentroid)
-			self.rgImg = vu.comboImage(self.gTagImg, self.rTagImg)
+			if(bgroundFlag):
+			    self.rgbImg = vu.comboImage(self.bTagImg, self.gTagImg, self.rTagImg, self.warpImg)
+			else:
+			    self.rgbImg = vu.comboImage(self.bTagImg, self.gTagImg, self.rTagImg)
 			ctr, theta = vu.localizeRobot(gCentroid, rCentroid)
 			if((ctr != None) and (theta != None)):
 			    fctr, ftheta = self.filterPoints(ctr, theta)
 			    self.x = ctr[0]
 			    self.y = ctr[1]
 			    self.theta = ftheta
-			    vu.drawSquareMarker(self.rgImg, int(fctr[0]), int(fctr[1]), 5, (255,0,0))
+			    vu.drawSquareMarker(self.rgbImg, int(fctr[0]), int(fctr[1]), 5, (255,0,0))
 			if(gCentroid != None):
-				vu.drawSquareMarker(self.rgImg, int(gCentroid[0]), int(gCentroid[1]), 5, (255,0,0))
+				vu.drawSquareMarker(self.rgbImg, int(gCentroid[0]), int(gCentroid[1]), 5, (255,0,0))
 			if(rCentroid != None):
-				vu.drawSquareMarker(self.rgImg, int(rCentroid[0]), int(rCentroid[1]), 5, (255,0,0))
+				vu.drawSquareMarker(self.rgbImg, int(rCentroid[0]), int(rCentroid[1]), 5, (255,0,0))
 			cv2.imshow(self.CAL_NAME, self.warpImg)
-			cv2.imshow(self.PROC_NAME, self.rgImg)
+			cv2.imshow(self.PROC_NAME, self.rgbImg)
 	    #if cv2.waitKey(20) & 0xFF == ord('q'):
 	    #    break
 	
@@ -170,7 +185,7 @@ class VisionSystem(object):
 	# Interface to get current state estimates
 	def getState(self):
 	    # Give estimated [x,y,theta]
-	    return [self.x_est, self.y_est, self.theta_est, 0] # Temporarily keep phi at 0
+	    return [self.x_est, self.y_est, self.theta_est] 
 	    
 	### Event Handlers ###
 	# Camera input mouseclick handler
