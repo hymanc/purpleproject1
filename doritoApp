@@ -1,0 +1,4 @@
+
+class DoritoApp( JoyApp ):
+    
+    def __init__(self):

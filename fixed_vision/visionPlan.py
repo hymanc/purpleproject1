@@ -14,4 +14,4 @@ class VisionPlan( Plan ):
     # 
     def behavior( self ):
 	print 'Vision Plan'
-	self.vision = VisionSystem(self, 1) # start vision system
+	self.vision = VisionSystem(0) # start vision system
