@@ -1,5 +1,5 @@
-	# A class for UVC camera interfacing via uvcdynctrl in Linux
-	# Must have uvcdynctrl installed and on the system path
+# A simple utility class for UVC camera interfacing via uvcdynctrl in Linux
+# Must have uvcdynctrl installed and on the system path for this to work
 
 import os
 import sys

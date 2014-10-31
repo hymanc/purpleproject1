@@ -24,8 +24,7 @@ class VisionSystem(object):
 	# Window names
 	CAM_FEED_NAME = 'Camera Feed'
 	CAL_NAME = 'Calibrated Image'
-	PROC1_NAME = 'Processing 1'
-	PROC2_NAME = 'Processing 2'
+	PROC_NAME = 'Vision Processing'
 
 	# Constants
 	G_CENTER = 52
@@ -77,12 +76,12 @@ class VisionSystem(object):
 		cv2.setMouseCallback(self.CAL_NAME, self.colorClickHandler)
 		
 		# Image processing Window 2
-		procWindow2 = cv2.namedWindow(self.PROC2_NAME)
-		cv2.createTrackbar('Green', self.PROC2_NAME, 58, 255, self.trackbarChangeHandler) 
-		cv2.createTrackbar('Red', self.PROC2_NAME, 0, 255, self.trackbarChangeHandler)
-		cv2.createTrackbar('GCutoff', self.PROC2_NAME, 80, 255, self.trackbarChangeHandler)
-		cv2.createTrackbar('RCutoff', self.PROC2_NAME, 100, 255, self.trackbarChangeHandler)
-		cv2.createTrackbar('SatCutoff', self.PROC2_NAME, 100, 255, self.trackbarChangeHandler)
+		procWindow2 = cv2.namedWindow(self.PROC_NAME)
+		cv2.createTrackbar('Green', self.PROC_NAME, 58, 255, self.trackbarChangeHandler) 
+		cv2.createTrackbar('Red', self.PROC_NAME, 0, 255, self.trackbarChangeHandler)
+		cv2.createTrackbar('GCutoff', self.PROC_NAME, 80, 255, self.trackbarChangeHandler)
+		cv2.createTrackbar('RCutoff', self.PROC_NAME, 100, 255, self.trackbarChangeHandler)
+		cv2.createTrackbar('SatCutoff', self.PROC_NAME, 100, 255, self.trackbarChangeHandler)
 
 		self.xHistory = deque(self.EMPTY_KERNEL)
 		self.yHistory = deque(self.EMPTY_KERNEL)
@@ -95,11 +94,11 @@ class VisionSystem(object):
 		    cv2.imshow(self.CAM_FEED_NAME, self.camImg)
 		    if(self.calstate == CalState.CALIBRATED):
 				self.remapImage() # Apply perspective warp
-				gr = cv2.getTrackbarPos('Green', self.PROC2_NAME)
-				rd = cv2.getTrackbarPos('Red', self.PROC2_NAME)
-				gvmin = cv2.getTrackbarPos('GCutoff', self.PROC2_NAME)
-				rvmin = cv2.getTrackbarPos('RCutoff', self.PROC2_NAME)
-				smin = cv2.getTrackbarPos('SatCutoff', self.PROC2_NAME)
+				gr = cv2.getTrackbarPos('Green', self.PROC_NAME)
+				rd = cv2.getTrackbarPos('Red', self.PROC_NAME)
+				gvmin = cv2.getTrackbarPos('GCutoff', self.PROC_NAME)
+				rvmin = cv2.getTrackbarPos('RCutoff', self.PROC_NAME)
+				smin = cv2.getTrackbarPos('SatCutoff', self.PROC_NAME)
 				gCentroid, self.gTagImg = self.findMarker(self.warpImg, gr, 10, smin, gvmin)
 				rCentroid, self.rTagImg = self.findMarker(self.warpImg, rd, 10, smin, rvmin)
 				#vu.printCentroids(gCentroid, rCentroid)
@@ -116,8 +115,7 @@ class VisionSystem(object):
 				if(rCentroid != None):
 					vu.drawSquareMarker(self.rgImg, int(rCentroid[0]), int(rCentroid[1]), 5, (255,0,0))
 				cv2.imshow(self.CAL_NAME, self.warpImg)
-				#cv2.imshow(self.PROC1_NAME, self.rTagImg)
-				cv2.imshow(self.PROC2_NAME, self.rgImg)
+				cv2.imshow(self.PROC_NAME, self.rgImg)
 		    if cv2.waitKey(20) & 0xFF == ord('q'):
 			break
     

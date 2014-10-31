@@ -1,3 +1,4 @@
+# Test script for vision system
 
 from visionSim import VisionSim
 import numpy as np
