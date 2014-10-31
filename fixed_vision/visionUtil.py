@@ -41,15 +41,44 @@ class VisionUtil(object):
 
 	# Finds
 	@staticmethod
-	def localizeRobot(gCtr = None, rCtr = None, bCtr = None, printFlag = False):
-		if((gCtr != None) and (rCtr != None)):
-			ctr = ((gCtr[0] + rCtr[0])/2, (gCtr[1] + rCtr[1])/2) # Compute line midpoint
-			theta = atan2(gCtr[1]-rCtr[1], gCtr[0]-rCtr[0]) # Compute angle
-			if(printFlag):
-			    ctrStr = '(' + str(round(ctr[0],1)) + ',' + str(round(ctr[1],1)) + ')'
-			    thetaStr = str(round(theta,3))
-			    print 'Center:', ctrStr, '\tTheta:', thetaStr
-			return ctr, theta
-		else:
-			return None, None
+	def localizeRobot(bCtr = None, gCtr = None, rCtr = None, printFlag = False):
+		ctr = None
+		theta = None
+		
+		# Determine which tags are visible
+		if(bCtr != None and gCtr != None and rCtr != None): # All three tags visible
+		   #ctr = (np.mean([bCtr[0], gCtr[0], rCtr[0]]),np.mean([bCtr[1], gCtr[2], rCtr[3]]))
+		   aGR = atan2(rCtr[1] - gCtr[1], rCtr[0] - gCtr[0]) # Compute green-red angle
+		   aBR = atan2(rCtr[1] - bCtr[1], rCtr[0] - BCtr[0]) # Compute blue-red angle
+		   aBG = atan2(gCtr[1] - bCtr[1], gCtr[0] - BCtr[0]) # Compute blue-green angle
+		   theta = np.mean([agr + pi/3, aBR, aBG - pi/3]) # Compute theta estimate from angles
+		 
+		else: # Determine localization with only two points
+		    
+		    if(bCtr != None and gCtr != None): # Blue and Green visible, Red unknown
+			theta = atan2(gCtr[1] - bCtr[1], gCtr[0] - bCtr[0]) - pi/3 # -pi/3 offset needed
+			rDist = sqrt( pow(bCtr[0]-gCtr[0] , 2) + pow(bCtr[1]-gCtr[1],  2) ) # Distance between points
+			rAngle = theta # Angle between blue and red points
+			rCtr = (bCtr[0] + rDist * cos(rAngle), bCtr[1] + rDist * sin(rAngle)) # Estimated red center
+		    
+		    elif(bCtr != None and rCtr != None): # Blue and Red Visible, Green Unknown
+			theta = atan2(rCtr[1] - bCtr[1], rCtr[0] - bCtr[0]) 
+			gDist = sqrt( pow(rCtr[0]-bCtr[0], 2) + pow(rCtr[1]-bCtr[1], 2) ) # Distance between points
+			gAngle = theta + pi/3 # Angle between blue and green points
+			gCtr = (bCtr[0] + gDist * cos(gAngle), bCtr[1] + gDist * sin(gAngle)) # Estimated green center
+		    
+		    elif(gCtr != None and rCtr != None): # Green and Red Visible, Blue unknown
+			theta = atan2(rCtr[1] - gCtr[1], rCtr[0] - gCtr[0]) + pi/3  # pi/3 offset needed
+			bDist = sqrt( pow(rCtr[0]-gCtr[0], 2) + pow(rCtr[1]-gCtr[1], 2) ) # Distance between points
+			bAngle = theta - 2*pi/3 # Angle between Green and Blue points
+			bCtr = (gCtr[0] + bDist*cos(theta), gCtr[1]  + bDist*sin(theta)) # Estimated blue center
+			
+		# Compute centroid off real or estimated points
+		ctr = (np.mean([bCtr[0], gCtr[0], rCtr[0]]),np.mean([bCtr[1], gCtr[2], rCtr[3]]))
+		    
+		if(printFlag): #Format and print results if requested
+		    ctrStr = '(' + str(round(ctr[0],1)) + ',' + str(round(ctr[1],1)) + ')'
+		    thetaStr = str(round(theta, 3))
+		    print 'Center:', ctrStr, '\tTheta:', thetaStr
+		return ctr, theta
 			

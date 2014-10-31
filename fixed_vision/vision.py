@@ -120,7 +120,7 @@ class VisionSystem(object):
 			    self.rgbImg = vu.comboImage(self.bTagImg, self.gTagImg, self.rTagImg, self.warpImg)
 			else:
 			    self.rgbImg = vu.comboImage(self.bTagImg, self.gTagImg, self.rTagImg)
-			ctr, theta = vu.localizeRobot(gCentroid, rCentroid)
+			ctr, theta = vu.localizeRobot(bCentroid, gCentroid, rCentroid)
 			if((ctr != None) and (theta != None)):
 			    fctr, ftheta = self.filterPoints(ctr, theta)
 			    self.x = ctr[0]
