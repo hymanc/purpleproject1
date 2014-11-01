@@ -57,18 +57,19 @@ class DoritoApp( JoyApp ):
 	if self.timeForControl(): 
 	    # Check
 	    print 'Handling Control Update'
-	    wp = self.sensor.lastWaypoints # Update Waypoints list
+	    wp = (self.sensor.lastWaypoints)[1] # Update Waypoints list
+	    currState = self.vplan.getState()		# Get latest state feedback from vision system
+	    print 'Current state:', str(currState)
 	    if(len(wp) > 0): # If waypoint exists
 		currWp = wp[0]
 		print 'Next Waypoint:', str(currWp) # 
-		currState = self.vplan.getState()		# Get latest state feedback from vision system
-		print 'Current state:', str(currState)
 		# Get next feedback
 		# Compute next Control
 		# Send next command
 	    else:
 		print 'No more waypoints available'
 	    
+	# Manual control handling
 	if evt.type == KEYUP:
 	    if evt.key == K_UP:
 		self.controls['up'] = False
@@ -83,7 +84,6 @@ class DoritoApp( JoyApp ):
 	    elif evt.key == K_PAGEDOWN:
 		self.controls['cw'] = False
 	    self._parseControls()
-
 	if evt.type == KEYDOWN:
 	    if evt.key == K_UP:
 		self.controls['up'] = True
@@ -97,15 +97,12 @@ class DoritoApp( JoyApp ):
 		self.controls['ccw'] = True
 	    elif evt.key == K_PAGEDOWN:
 		self.controls['cw'] = True
+	    elif evt.key == K_r: # Run mode
+		print '=== Set mode to Run ===\n\n'
+		self.opState = DoritoState.RUNNING
 	    self._parseControls()
 	
 	
-	elif(evt.type == KEYDOWN):
-	    print 'Key Pressed'
-	    if evt.key == K_r:
-		print 'Run'
-		self.opState = DoritoState.RUNNING
-	    # Get key and check for start/stop condition
 	return JoyApp.onEvent(self,evt)
 	
 	

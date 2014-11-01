@@ -57,16 +57,16 @@ class VisionUtil(object):
 		else: # Determine localization with only two points
 		    
 		    if(bCtr != None and gCtr != None): # Blue and Green visible, Red unknown
-			theta = atan2(gCtr[1] - bCtr[1], gCtr[0] - bCtr[0]) - pi/3 # -pi/3 offset needed
+			theta = atan2(bCtr[1] - gCtr[1], bCtr[0] - gCtr[0]) - pi/3 # -pi/3 offset needed
 			rDist = sqrt( pow(bCtr[0]-gCtr[0] , 2) + pow(bCtr[1]-gCtr[1],  2) ) # Distance between points
 			rAngle = theta # Angle between blue and red points
-			rCtr = (bCtr[0] + rDist * cos(rAngle), bCtr[1] + rDist * sin(rAngle)) # Estimated red center
+			rCtr = (gCtr[0] + rDist * cos(rAngle), gCtr[1] + rDist * sin(rAngle)) # Estimated red center
 		    
 		    elif(bCtr != None and rCtr != None): # Blue and Red Visible, Green Unknown
-			theta = atan2(rCtr[1] - bCtr[1], rCtr[0] - bCtr[0]) 
+			theta = atan2(bCtr[1] - rCtr[1], bCtr[0] - rCtr[0]) 
 			gDist = sqrt( pow(rCtr[0]-bCtr[0], 2) + pow(rCtr[1]-bCtr[1], 2) ) # Distance between points
 			gAngle = theta + pi/3 # Angle between blue and green points
-			gCtr = (bCtr[0] + gDist * cos(gAngle), bCtr[1] + gDist * sin(gAngle)) # Estimated green center
+			gCtr = (rCtr[0] + gDist * cos(gAngle), rCtr[1] + gDist * sin(gAngle)) # Estimated green center
 		    
 		    elif(gCtr != None and rCtr != None): # Green and Red Visible, Blue unknown
 			theta = atan2(rCtr[1] - gCtr[1], rCtr[0] - gCtr[0]) + pi/3  # pi/3 offset needed
