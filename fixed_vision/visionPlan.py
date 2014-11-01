@@ -9,7 +9,7 @@ class VisionPlan( Plan ):
 	Plan.__init__(self, app, *arg, **kw ) # Initialize Plan
 	
     # Gets the robot vision points
-    def getState():
+    def getState(self):
 	state = self.vision.getState()
 	return {'x':state[0],'y':state[1],'theta':state[2]}
     

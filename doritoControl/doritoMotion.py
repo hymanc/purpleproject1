@@ -59,7 +59,7 @@ class DoritoMotion(object):
     # Generates the 3x3 Force-Torque matrix rotated into the world frame
     def _forceTorqueMatrix(self, worldFrameFlag=True,theta=None):
 	if(theta == None):
-	    theta = self.Theta
+	    theta = self.theta
 	rc = cos(theta)
 	rs = sin(theta)
 	Fx1 = -cos(pi/3) 

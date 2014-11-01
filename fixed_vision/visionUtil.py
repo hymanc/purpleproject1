@@ -2,7 +2,8 @@
 
 import cv2
 import numpy as np
-from math import atan2
+#from math import atan2
+from math import *
 
 # Vision utilities class
 class VisionUtil(object):
@@ -49,9 +50,9 @@ class VisionUtil(object):
 		if(bCtr != None and gCtr != None and rCtr != None): # All three tags visible
 		   #ctr = (np.mean([bCtr[0], gCtr[0], rCtr[0]]),np.mean([bCtr[1], gCtr[2], rCtr[3]]))
 		   aGR = atan2(rCtr[1] - gCtr[1], rCtr[0] - gCtr[0]) # Compute green-red angle
-		   aBR = atan2(rCtr[1] - bCtr[1], rCtr[0] - BCtr[0]) # Compute blue-red angle
-		   aBG = atan2(gCtr[1] - bCtr[1], gCtr[0] - BCtr[0]) # Compute blue-green angle
-		   theta = np.mean([agr + pi/3, aBR, aBG - pi/3]) # Compute theta estimate from angles
+		   aBR = atan2(rCtr[1] - bCtr[1], rCtr[0] - bCtr[0]) # Compute blue-red angle
+		   aBG = atan2(gCtr[1] - bCtr[1], gCtr[0] - bCtr[0]) # Compute blue-green angle
+		   theta = np.mean([aGR + pi/3, aBR, aBG - pi/3]) # Compute theta estimate from angles
 		 
 		else: # Determine localization with only two points
 		    
@@ -74,7 +75,11 @@ class VisionUtil(object):
 			bCtr = (gCtr[0] + bDist*cos(theta), gCtr[1]  + bDist*sin(theta)) # Estimated blue center
 			
 		# Compute centroid off real or estimated points
-		ctr = (np.mean([bCtr[0], gCtr[0], rCtr[0]]),np.mean([bCtr[1], gCtr[2], rCtr[3]]))
+		if(bCtr != None and gCtr != None and rCtr != None):
+		    ctr = (np.mean([bCtr[0], gCtr[0], rCtr[0]]),np.mean([bCtr[1], gCtr[1], rCtr[1]]))
+		else:
+		    print 'Insufficient number of points'
+		    ctr = None
 		    
 		if(printFlag): #Format and print results if requested
 		    ctrStr = '(' + str(round(ctr[0],1)) + ',' + str(round(ctr[1],1)) + ')'

@@ -12,7 +12,7 @@ import numpy as np
 from uvcinterface import UVCInterface as uvc
 from visionUtil import VisionUtil as vu
 from collections import deque
-
+from math import *
 # Calibration state 'Enumeration'
 class CalState(object):
     UNCAL = 1
@@ -34,8 +34,8 @@ class VisionSystem(object):
 	VMIN = 80
 
 	#HISTORY_LENGTH = 15
-	EMPTY_KERNEL = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-	RAW_KERNEL = np.array([1, 2, 3, 6, 8, 10, 10, 15, 18, 20], dtype = np.float32)
+	EMPTY_KERNEL = [0, 0, 0, 0, 0, 0, 0]
+	RAW_KERNEL = np.array([1, 2, 3, 6, 10, 18, 20], dtype = np.float32)
 	FIR_KERNEL = np.multiply(RAW_KERNEL,1/np.linalg.norm(RAW_KERNEL,1)) # Normalized kernel
 
 	def __init__(self, camera):
@@ -49,7 +49,16 @@ class VisionSystem(object):
 		self.y_est = -1
 		self.theta_est = -1
 		#self.worldpts = np.float32([[0,0],[self.XSIZE,0],[self.XSIZE,self.YSIZE],[0,self.YSIZE]])
-		self.worldpts = np.float32([[0,self.YSIZE/2],[0,self.YSIZE],[self.XSIZE,self.YSIZE],[self.XSIZE,self.YSIZE/2]])
+		#self.worldpts = np.float32([[0,self.YSIZE/2],[0,self.YSIZE],[self.XSIZE,self.YSIZE],[self.XSIZE,self.YSIZE/2]])
+		# Calibration points from world
+		self.worldpts = np.float32([
+		    [0,self.YSIZE/2],
+		    [0,0],
+		    [self.XSIZE,0],
+		    [self.XSIZE,self.YSIZE/2]
+		    ])
+			
+		    
 		### Camera initialization ###
 		print 'Opening Camera ' + str(camera)
 		self.vidcap = cv2.VideoCapture(camera)# Open up specified camera
@@ -62,18 +71,18 @@ class VisionSystem(object):
 
 		# Set camera autoexposure
 		uvc.set(self.camera, uvc.EXPOSURE_AUTO, 1)
-		uvc.set(self.camera, uvc.EXPOSURE_AUTO_PRIORITY, 1)
+		uvc.set(self.camera, uvc.EXPOSURE_AUTO_PRIORITY, 0)
 
 		### Initialize UI elements ###
 		# Filter Controls Window
 		ctlWindow = cv2.namedWindow(self.CTL_NAME)
-		cv2.createTrackbar('Blue', self.CTL_NAME, 115, 255, self.trackbarChangeHandler)
-		cv2.createTrackbar('Green', self.CTL_NAME, 58, 255, self.trackbarChangeHandler) 
-		cv2.createTrackbar('Red', self.CTL_NAME, 0, 255, self.trackbarChangeHandler)
-		cv2.createTrackbar('B Cutoff', self.CTL_NAME, 80, 255, self.trackbarChangeHandler)
-		cv2.createTrackbar('G Cutoff', self.CTL_NAME, 80, 255, self.trackbarChangeHandler)
-		cv2.createTrackbar('R Cutoff', self.CTL_NAME, 100, 255, self.trackbarChangeHandler)
-		cv2.createTrackbar('Sat Cutoff', self.CTL_NAME, 100, 255, self.trackbarChangeHandler)
+		cv2.createTrackbar('Blue', self.CTL_NAME, 88, 180, self.trackbarChangeHandler)
+		cv2.createTrackbar('Green', self.CTL_NAME, 57, 180, self.trackbarChangeHandler) 
+		cv2.createTrackbar('Red', self.CTL_NAME, 172, 180, self.trackbarChangeHandler)
+		cv2.createTrackbar('B Cutoff', self.CTL_NAME, 110, 255, self.trackbarChangeHandler)
+		cv2.createTrackbar('G Cutoff', self.CTL_NAME, 110, 255, self.trackbarChangeHandler)
+		cv2.createTrackbar('R Cutoff', self.CTL_NAME, 110, 255, self.trackbarChangeHandler)
+		cv2.createTrackbar('Sat Cutoff', self.CTL_NAME, 130, 255, self.trackbarChangeHandler)
 		cv2.createTrackbar('Show Background', self.CTL_NAME, 1, 1, self.trackbarChangeHandler)
 		
 		# Camera input window
@@ -84,8 +93,8 @@ class VisionSystem(object):
 		cv2.setMouseCallback(self.CAM_FEED_NAME, self.mouseClickHandler) # Set mouse callbacks for calibration
 		
 		# Rectified/Calibrated Image window
-		calWindow = cv2.namedWindow(self.CAL_NAME)
-		cv2.setMouseCallback(self.CAL_NAME, self.colorClickHandler)
+		#calWindow = cv2.namedWindow(self.CAL_NAME)
+		#cv2.setMouseCallback(self.CAL_NAME, self.colorClickHandler)
 		
 		# Image processing Window 2
 		procWindow = cv2.namedWindow(self.PROC_NAME)
@@ -123,15 +132,17 @@ class VisionSystem(object):
 			ctr, theta = vu.localizeRobot(bCentroid, gCentroid, rCentroid)
 			if((ctr != None) and (theta != None)):
 			    fctr, ftheta = self.filterPoints(ctr, theta)
-			    self.x = ctr[0]
-			    self.y = ctr[1]
-			    self.theta = ftheta
-			    vu.drawSquareMarker(self.rgbImg, int(fctr[0]), int(fctr[1]), 5, (255,0,0))
+			    self.x_est = ctr[0]
+			    self.y_est = ctr[1]
+			    self.theta_est = ftheta
+			    vu.drawSquareMarker(self.rgbImg, int(fctr[0]), int(fctr[1]), 5, (255,0,255))
 			if(gCentroid != None):
-				vu.drawSquareMarker(self.rgbImg, int(gCentroid[0]), int(gCentroid[1]), 5, (255,0,0))
+				vu.drawSquareMarker(self.rgbImg, int(gCentroid[0]), int(gCentroid[1]), 5, (255,0,255))
 			if(rCentroid != None):
-				vu.drawSquareMarker(self.rgbImg, int(rCentroid[0]), int(rCentroid[1]), 5, (255,0,0))
-			cv2.imshow(self.CAL_NAME, self.warpImg)
+				vu.drawSquareMarker(self.rgbImg, int(rCentroid[0]), int(rCentroid[1]), 5, (255,0,255))
+			if(bCentroid != None):
+				vu.drawSquareMarker(self.rgbImg, int(bCentroid[0]), int(bCentroid[1]), 5, (255,0,255))
+			#cv2.imshow(self.CAL_NAME, self.warpImg)
 			cv2.imshow(self.PROC_NAME, self.rgbImg)
 	    #if cv2.waitKey(20) & 0xFF == ord('q'):
 	    #    break
