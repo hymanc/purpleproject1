@@ -30,7 +30,7 @@ class DoritoApp( JoyApp ):
     def onStart( self ):
 	print '\n===== Doritos Xtreme Nacho Cheese Robot Command and Control v99.37 =====\n\n'
 	
-	# Attempt to start vision system
+	# Attempt to start vision system plan
 	self.vplan = VisionPlan(self, camera=ncam)
 	self.vplan.start()
 	
@@ -63,15 +63,14 @@ class DoritoApp( JoyApp ):
 	    if(self.opState == DoritoState.RUNNING): # Only update commands while running
 		print 'Handling Control Update'
 		wp = (self.sensor.lastWaypoints)[1] # Update Waypoints list
-	    
+		print 'Found', len(wp), ' waypoints'
 		if(len(wp) > 0): # If waypoint exists
 		    currWp = wp[0]
 		    print 'Next Waypoint:', str(currWp) # 
-		    # Get next feedback
-		    # Compute next Control
-		    # Send next command
+		    self.controlHandler(currWp)		# Run control handler
 		else:
-		    print 'No more waypoints available'
+		    print 'No more waypoints available, stopping'
+		    self.drive.setSpeed(np.asfarray([0.,0.]), 0) # Send command requests to the motion drive# Stop
 	    
 	# Manual control handling
 	if evt.type == KEYUP:
@@ -106,10 +105,9 @@ class DoritoApp( JoyApp ):
 		self.opState = DoritoState.RUNNING
 	    self._parseControls()
 	
-	
 	return JoyApp.onEvent(self,evt)
 	
-	
+    # Manual control parser
     def _parseControls(self):
 	f = np.array((0.,0.))
 	t = 0.
@@ -129,7 +127,7 @@ class DoritoApp( JoyApp ):
 	print 'Controls parsed',np.asfarray(f),t
 	self.drive.setSpeed(np.asarray(f), t)
 	   
-    
+    # Formatting function for printing the current robot state
     def printState(self):
 	x = self.currState['x']
 	if(x != None):
@@ -142,6 +140,24 @@ class DoritoApp( JoyApp ):
 	    theta = round(theta*180/pi,3)
 	print 'Current State:\tx:',str(x),'\ty:',str(y),'\t\xCE\xB8:',str(theta)
 	
+    # Controller Handler for 3-axis P-controller
+    def controlHandler(self,nextWaypoint):
+	# Command scaling factors
+	drivescale = 1.0
+	rotscale = 0.5
+	# Current state values
+	curX = self.currState['x']
+	curY = self.currState['y']
+	curTheta = self.currState['theta']
+	curLoc = np.array((curX,curY))
+	# Compute errors
+	xyError = nextWaypoint - curLoc
+	thetaError = -curTheta
+	f = drivescale * (xyError) # Net translational "force" command
+	t = rotscale*(thetaError) # Net "Torque" command
+	self.drive.setSpeed(np.asfarray(f), t) # Send command requests to the motion driver
+	return xyError, thetaError # Return errors
+	    
 # Top level main() bootstrap
 if __name__=="__main__":
     import sys
