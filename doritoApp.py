@@ -8,6 +8,7 @@ from fixed_vision.visionPlan import VisionPlan
 from fixed_vision.sensorPlan import SensorPlan
 from doritoControl.doritoMotion import DoritoMotion
 import numpy as np
+from math import *
 
 # Dorito state enumeration class
 class DoritoState(object):
@@ -47,7 +48,7 @@ class DoritoApp( JoyApp ):
 	self.sensor.start()
 	
 	self.opState = DoritoState.SETUP
-	
+	self.currState = {'x':None,'y':None,'theta':None}
 	# Set timer for events
 	self.timeForControl = self.onceEvery(0.1)
 	
@@ -55,19 +56,22 @@ class DoritoApp( JoyApp ):
     def onEvent( self , evt ):
 	#print 'Event Occurred', str(evt)
 	if self.timeForControl(): 
-	    # Check
-	    print 'Handling Control Update'
-	    wp = (self.sensor.lastWaypoints)[1] # Update Waypoints list
-	    currState = self.vplan.getState()		# Get latest state feedback from vision system
-	    print 'Current state:', str(currState)
-	    if(len(wp) > 0): # If waypoint exists
-		currWp = wp[0]
-		print 'Next Waypoint:', str(currWp) # 
-		# Get next feedback
-		# Compute next Control
-		# Send next command
-	    else:
-		print 'No more waypoints available'
+	    # Print
+	    self.currState = self.vplan.getState()		# Get latest state feedback from vision system
+	    self.printState()
+	    #print 'Current state:', str(currState)
+	    if(self.opState == DoritoState.RUNNING): # Only update commands while running
+		print 'Handling Control Update'
+		wp = (self.sensor.lastWaypoints)[1] # Update Waypoints list
+	    
+		if(len(wp) > 0): # If waypoint exists
+		    currWp = wp[0]
+		    print 'Next Waypoint:', str(currWp) # 
+		    # Get next feedback
+		    # Compute next Control
+		    # Send next command
+		else:
+		    print 'No more waypoints available'
 	    
 	# Manual control handling
 	if evt.type == KEYUP:
@@ -125,6 +129,18 @@ class DoritoApp( JoyApp ):
 	print 'Controls parsed',np.asfarray(f),t
 	self.drive.setSpeed(np.asarray(f), t)
 	   
+    
+    def printState(self):
+	x = self.currState['x']
+	if(x != None):
+	    x = round(x, 3)
+	y = self.currState['y']
+	if(y != None):
+	    y = round(y, 3)
+	theta = self.currState['theta']
+	if(theta != None):
+	    theta = round(theta*180/pi,3)
+	print 'Current State:\tx:',str(x),'\ty:',str(y),'\t\xCE\xB8:',str(theta)
 	
 # Top level main() bootstrap
 if __name__=="__main__":
