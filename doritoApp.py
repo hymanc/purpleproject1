@@ -62,6 +62,8 @@ class DoritoApp( JoyApp ):
 	    #print 'Current state:', str(currState)
 	    if(self.opState == DoritoState.RUNNING): # Only update commands while running
 		print 'Handling Control Update'
+		testWaypoints = self.sensor.lastWaypoints
+		print 'Waypoints', str(testWaypoints)
 		wp = (self.sensor.lastWaypoints)[1] # Update Waypoints list
 		print 'Found', len(wp), ' waypoints'
 		if(len(wp) > 0): # If waypoint exists
@@ -70,7 +72,9 @@ class DoritoApp( JoyApp ):
 		    self.controlHandler(currWp)		# Run control handler
 		else:
 		    print 'No more waypoints available, stopping'
-		    self.drive.setSpeed(np.asfarray([0.,0.]), 0) # Send command requests to the motion drive# Stop
+		    if(self.servoErrorFlag == False):
+			print self.servoErrorFlag
+			self.drive.setSpeed(np.asfarray([0.,0.]), 0) # Send command requests to the motion drive# Stop
 	    
 	# Manual control handling
 	if evt.type == KEYUP:
@@ -125,7 +129,8 @@ class DoritoApp( JoyApp ):
 	if(self.controls['cw']):
 	    t = t - 3.
 	print 'Controls parsed',np.asfarray(f),t
-	self.drive.setSpeed(np.asarray(f), t)
+	if(self.servoErrorFlag == False):
+	    self.drive.setSpeed(np.asarray(f), t)
 	   
     # Formatting function for printing the current robot state
     def printState(self):
@@ -155,7 +160,8 @@ class DoritoApp( JoyApp ):
 	thetaError = -curTheta
 	f = drivescale * (xyError) # Net translational "force" command
 	t = rotscale*(thetaError) # Net "Torque" command
-	self.drive.setSpeed(np.asfarray(f), t) # Send command requests to the motion driver
+	if(self.servoErrorFlag == False):
+	    self.drive.setSpeed(np.asfarray(f), t) # Send command requests to the motion driver
 	return xyError, thetaError # Return errors
 	    
 # Top level main() bootstrap
