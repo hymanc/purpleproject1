@@ -48,7 +48,8 @@ class VisionSystem(object):
 		self.x_est = -1
 		self.y_est = -1
 		self.theta_est = -1
-
+		self.waypointEst = [(300,300)] # Waypoint estimates for UI
+		
 		#self.worldpts = np.float32([
 		#    [0,self.YSIZE/2],
 		#    [0,0],
@@ -108,7 +109,7 @@ class VisionSystem(object):
 		# Image processing Window 2
 		procWindow = cv2.namedWindow(self.PROC_NAME)
 
-
+		# History for filter bank
 		self.xHistory = deque(self.EMPTY_KERNEL)
 		self.yHistory = deque(self.EMPTY_KERNEL)
 		self.thetaHistory = deque(self.EMPTY_KERNEL)
@@ -151,6 +152,11 @@ class VisionSystem(object):
 				vu.drawSquareMarker(self.rgbImg, int(rCentroid[0]), int(rCentroid[1]), 5, (255,0,255))
 			if(bCentroid != None):
 				vu.drawSquareMarker(self.rgbImg, int(bCentroid[0]), int(bCentroid[1]), 5, (255,0,255))
+			wpIndex = 0
+			for wp in self.waypointEst:
+			    wpIndex = wpIndex + 1
+			    vu.drawFilledCircleMarker(self.rgbImg, wp[0], wp[1], 10, (0,255,255))
+			    vu.drawTextIndex(self.rgbImg, wp[0], wp[1], str(wpIndex))# Draw waypoint index
 			#cv2.imshow(self.CAL_NAME, self.warpImg)
 			cv2.imshow(self.PROC_NAME, self.rgbImg)
 	    #if cv2.waitKey(20) & 0xFF == ord('q'):
@@ -260,6 +266,11 @@ class VisionSystem(object):
 	def exposureChanged(self, exp):
 		uvc.set(self.camera, uvc.EXPOSURE_ABS, exp)
 		
+	# Sets the waypoint list for rendering on overlay
+	def setWaypoints(self, waypointEst):
+	    self.waypointEst = vu.toImageCoordinates(waypointEst)
+	    
+	# Stops the vision process
 	def stop(self):
 	    self.vidcap.release()
 	    cv2.release()

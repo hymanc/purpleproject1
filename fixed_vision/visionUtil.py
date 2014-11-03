@@ -14,6 +14,7 @@ class VisionUtil(object):
 	# Converts "waypoint" coordinates into scaled/offset coordinates for vision processing
 	@staticmethod
 	def toImageCoordinates(items):
+	    items = np.float32(items)
 	    return items*VisionUtil.IMG_SCALE + VisionUtil.IMG_OFFSET
 	
 	# Converts offset/scaled image coordinates back to waypoint coordinates
@@ -53,6 +54,16 @@ class VisionUtil(object):
 		w2 = width/2
 		cv2.rectangle(img, (x-w2,y-w2),(x+w2,y+w2),color,1)
 
+	# Draws a filled circle marker
+	@staticmethod
+	def drawFilledCircleMarker(img, x, y, r, color):
+	    cv2.circle(img, (x,y), r, color,-1)
+	   
+	# Draws text on screen
+	@staticmethod
+	def drawTextIndex(img, x, y, txtStr, color=(255,0,128)):
+	    cv2.putText(img, txtStr, (x,y), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
+	    
 	# Finds
 	@staticmethod
 	def localizeRobot(bCtr = None, gCtr = None, rCtr = None, printFlag = False):

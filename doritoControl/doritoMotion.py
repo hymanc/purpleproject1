@@ -75,6 +75,10 @@ class DoritoMotion(object):
 	else:
 	   return F
     
+    # Stops all motors
+    def stopAll(self):
+	self.setDriveMotorCommands([0,0,0])
+	
     # Current rotation state mutator
     def setTheta(self, theta):
 	self.theta = theta

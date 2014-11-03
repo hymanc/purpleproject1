@@ -13,6 +13,10 @@ class VisionPlan( Plan ):
 	state = self.vision.getState()
 	return {'x':state[0],'y':state[1],'theta':state[2]}
     
+    # Function to pass down waypoints to vision system
+    def setWaypoints(self, waypoints):
+	self.vision.setWaypoints(waypoints)
+	
     # Vision plan behavior
     def behavior( self ):
 	#print 'Launching Vision Plan'

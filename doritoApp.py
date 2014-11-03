@@ -17,6 +17,7 @@ class DoritoState(object):
     SETUP = 'SETUP'
     RUNNING = 'RUNNING'
     FINISHED = 'FINISHED'
+    STOPPED = 'STOPPED'
     
 # Top Level Dorito Robot Class
 class DoritoApp( JoyApp ):
@@ -60,15 +61,15 @@ class DoritoApp( JoyApp ):
 	    # Print
 	    self.currState = self.vplan.getState()		# Get latest state feedback from vision system
 	    self.printState()
+	    waypoints = np.float32(self.sensor.lastWaypoints[1])
+	    print 'Waypoints:',str(waypoints)
+	    self.vplan.setWaypoints(waypoints)# Pass waypoints to vision system
 	    #print 'Current state:', str(currState)
 	    if(self.opState == DoritoState.RUNNING): # Only update commands while running
 		print 'Handling Control Update'
-		testWaypoints = self.sensor.lastWaypoints
-		print 'Waypoints', str(testWaypoints)
-		wp = (self.sensor.lastWaypoints)[1] # Update Waypoints list
-		print 'Found', len(wp), ' waypoints'
-		if(len(wp) > 0): # If waypoint exists
-		    currWp = wp[0]
+		print 'Found', len(waypoints), ' waypoints'
+		if(len(waypoints) > 0): # If waypoint exists
+		    currWp = waypoints[0]
 		    print 'Next Waypoint:', str(currWp) # 
 		    tError, rError = self.controlHandler(currWp)		# Run control handler
 		    print 'X-Y Error', tError
@@ -110,6 +111,10 @@ class DoritoApp( JoyApp ):
 	    elif evt.key == K_r: # Run mode
 		print '=== Set mode to Run ===\n\n'
 		self.opState = DoritoState.RUNNING
+	    elif evt.key == K_s: # E-stop
+		self.opState = DoritoState.STOPPED
+		if(self.servoErrorFlag == False):
+		    self.drive.stopAll()
 	    self._parseControls()
 	
 	return JoyApp.onEvent(self,evt)
@@ -172,8 +177,7 @@ class DoritoApp( JoyApp ):
 	
     # Random walk to hit waypoint if it does not register
     def randomWalk(self, nextWaypoint):
-	a = 0
-	# TODO: Implement
+	pass # TODO: Implement
 	
 # Top level main() bootstrap
 if __name__=="__main__":
