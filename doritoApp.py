@@ -18,6 +18,7 @@ class DoritoState(object):
     RUNNING = 'RUNNING'
     FINISHED = 'FINISHED'
     STOPPED = 'STOPPED'
+    MANUAL = 'MANUAL'
     
 # Top Level Dorito Robot Class
 class DoritoApp( JoyApp ):
@@ -80,11 +81,13 @@ class DoritoApp( JoyApp ):
 		    #self.vplan.setControlVectorRender(self.tagEst, self.tagEst + tError)
 		    print 'Rotation Error', rError
 		else:
-		    print 'No more waypoints available, stopping'
+		    print 'No more waypoints available, holding'
 		    if(self.servoErrorFlag == False):
 			print self.servoErrorFlag
-			self.drive.setSpeed(np.asfarray([0.,0.]), 0) # Send command requests to the motion drive# Stop
-	    
+			#self.drive.setSpeed(np.asfarray([0.,0.]), 0) # Send command requests to the motion drive# Stop
+			holdWP = vu.toWaypointCoordinates( np.array( [self.currState['tagX'],self.currState['tagY']] )) # Current tag location in waypoint space
+			self.controlHandler(holdWP)# Run controller to hold orientation
+			
 	# Manual control handling
 	if evt.type == KEYUP:
 	    if evt.key == K_UP:
@@ -120,6 +123,8 @@ class DoritoApp( JoyApp ):
 		self.opState = DoritoState.STOPPED
 		if(self.servoErrorFlag == False):
 		    self.drive.stopAll()
+	    elif evt.key == K_m: # Manual drive
+		self.opState = DoritoState.MANUAL
 	    self._parseControls()
 	
 	return JoyApp.onEvent(self,evt)
@@ -142,7 +147,7 @@ class DoritoApp( JoyApp ):
 	if(self.controls['cw']):
 	    t = t - 3.
 	print 'Controls parsed',np.asfarray(f),t
-	if(self.servoErrorFlag == False):
+	if(self.servoErrorFlag == False and self.opState == DoritoState.MANUAL):
 	    self.drive.setSpeed(np.asarray(f), t)
 	   
     # Formatting function for printing the current robot state
@@ -172,7 +177,7 @@ class DoritoApp( JoyApp ):
 	print 'Target waypoint at', str(nextWaypoint), 'in img coordinates'
 	# Command scaling factors
 	drivescale = 1.0
-	rotscale = 0.5
+	rotscale = 2.0
 	# Current state values
 	#curX = self.currState['x']
 	#curY = self.currState['y']
