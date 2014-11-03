@@ -11,7 +11,7 @@ class VisionPlan( Plan ):
     # Gets the robot vision points
     def getState(self):
 	state = self.vision.getState()
-	return {'x':state[0],'y':state[1],'theta':state[2]}
+	return {'x':state[0],'y':state[1],'theta':state[2], 'tagX':state[3], 'tagY':state[4]}
     
     # Function to pass down waypoints to vision system
     def setWaypoints(self, waypoints):
@@ -19,8 +19,11 @@ class VisionPlan( Plan ):
 	
     # Function to pass down tag estimate position for rendering
     def setTagLocation(self, tagEst):
-	self.vision.setTagLocation(tagEst)
+	pass#self.vision.setTagLocation(tagEst)
 	
+    def getTagLocationEstimate(self):
+	return self.vision.tagLoc
+    
     # Function to pass the force vector down for rendering
     def setControlVectorRender(self, start, end):
 	self.vision.fVectorStart = start

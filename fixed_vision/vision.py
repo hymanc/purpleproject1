@@ -154,12 +154,13 @@ class VisionSystem(object):
 			    self.rgbImg = vu.comboImage(self.bTagImg, self.gTagImg, self.rTagImg, self.warpImg)
 			else:
 			    self.rgbImg = vu.comboImage(self.bTagImg, self.gTagImg, self.rTagImg)
-			ctr, theta = vu.localizeRobot(bCentroid, gCentroid, rCentroid)
+			ctr, theta, bCtr, gCtr, rCtr = vu.localizeRobot(bCentroid, gCentroid, rCentroid)
 			if((ctr != None) and (theta != None)):
 			    fctr, ftheta = self.filterPoints(ctr, theta)
 			    self.x_est = ctr[0]
 			    self.y_est = ctr[1]
 			    self.theta_est = ftheta
+			    self.tagLoc = vu.computeTagLocation(ctr, bCtr) # Compute tag location
 			    vu.drawSquareMarker(self.rgbImg, int(fctr[0]), int(fctr[1]), 5, (255,0,255))
 			if(gCentroid != None):
 				vu.drawSquareMarker(self.rgbImg, int(gCentroid[0]), int(gCentroid[1]), 5, (0,0,255))
@@ -176,7 +177,8 @@ class VisionSystem(object):
 				wpcolor = (0,255,255)
 			    vu.drawFilledCircleMarker(self.rgbImg, wp[0], wp[1], 10, wpcolor) #
 			    vu.drawTextIndex(self.rgbImg, wp[0], wp[1], str(wpIndex)) # Draw waypoint index
-			vu.drawFilledCircleMarker(self.rgbImg, self.tagLoc[0], self.tagLoc[1], 5, (0,0,160))
+			if(self.tagLoc[0] != None):
+			    vu.drawFilledCircleMarker(self.rgbImg, self.tagLoc[0], self.tagLoc[1], 5, (0,0,160))
 			#vu.drawVector(self.rgbImg, self.fVectorStart, self.fVectorEnd, (255,128,255))
 			#cv2.imshow(self.CAL_NAME, self.warpImg)
 			cv2.imshow(self.PROC_NAME, self.rgbImg)
@@ -234,7 +236,13 @@ class VisionSystem(object):
 	# Interface to get current state estimates
 	def getState(self):
 	    # Give estimated [x,y,theta]
-	    return [self.x_est, self.y_est, self.theta_est] 
+	    if(self.tagLoc != None):
+		tx = self.tagLoc[0]
+		ty = self.tagLoc[1]
+	    else:
+		tx = None
+		ty = None
+	    return [self.x_est, self.y_est, self.theta_est, tx, ty] 
 	    
 	### Event Handlers ###
 	# Camera input mouseclick handler

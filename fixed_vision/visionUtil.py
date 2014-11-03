@@ -68,8 +68,21 @@ class VisionUtil(object):
 	@staticmethod
 	def drawVector(img, start, end, color):
 	    cv2.line(img, start, end, color,2) # Just make a line for now
-	    
-	# Finds
+	   
+	# Compute tag location from centroid and blue point
+	@staticmethod
+	def computeTagLocation(centroid,bCtr):
+	    tag = (None,None)
+	    if(centroid != None and bCtr != None):
+		centroid = np.array(centroid)
+		bCtr = np.array(bCtr)
+		tag = np.asfarray(centroid + (centroid-bCtr))
+		tag = tag.tolist()
+		tag[0] = int(tag[0])
+		tag[1] = int(tag[1])
+	    return tag
+	
+	# Finds robot triangle centroid and orientation (green in positive Y gives theta=0)
 	@staticmethod
 	def localizeRobot(bCtr = None, gCtr = None, rCtr = None, printFlag = False):
 		ctr = None
@@ -117,5 +130,5 @@ class VisionUtil(object):
 		    ctrStr = '(' + str(round(ctr[0],1)) + ',' + str(round(ctr[1],1)) + ')'
 		    thetaStr = str(round(theta, 3))
 		    print 'Center:', ctrStr, '\tTheta:', thetaStr
-		return ctr, theta
+		return ctr, theta, bCtr, gCtr, rCtr
 			

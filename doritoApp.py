@@ -50,7 +50,7 @@ class DoritoApp( JoyApp ):
 	self.sensor.start()
 	
 	self.opState = DoritoState.SETUP
-	self.currState = {'x':None,'y':None,'theta':None}
+	self.currState = {'x':None,'y':None,'theta':None, 'tagX':None, 'tagY':None}
 	# Set timer for events
 	self.timeForControl = self.onceEvery(0.1)
 	
@@ -67,7 +67,7 @@ class DoritoApp( JoyApp ):
 	    self.vplan.setWaypoints(waypoints)# Pass waypoints to vision system
 	    self.tagEst = self.robotTagLocation()
 	    print 'Tag Estimate', str(self.tagEst)
-	    self.vplan.setTagLocation(self.tagEst)
+	    #self.vplan.setTagLocation(self.tagEst)
 	    #print 'Current state:', str(currState)
 	    if(self.opState == DoritoState.RUNNING): # Only update commands while running
 		print 'Handling Control Update'
@@ -77,7 +77,7 @@ class DoritoApp( JoyApp ):
 		    print 'Next Waypoint:', str(currWp) # 
 		    tError, rError = self.controlHandler(currWp)		# Run control handler
 		    print 'X-Y Error', tError
-		    self.vplan.setControlVectorRender(self.tagEst, self.tagEst + tError)
+		    #self.vplan.setControlVectorRender(self.tagEst, self.tagEst + tError)
 		    print 'Rotation Error', rError
 		else:
 		    print 'No more waypoints available, stopping'
@@ -156,7 +156,14 @@ class DoritoApp( JoyApp ):
 	theta = self.currState['theta']
 	if(theta != None):
 	    theta = round(theta*180/pi,3)
+	tX = self.currState['tagX']
+	if(tX != None):
+	    tX = round(tX, 3)
+	tY = self.currState['tagY']
+	if(tY != None):
+	    tY = round(tY, 3)
 	print 'Current State:\tx:',str(x),'\ty:',str(y),'\t\xCE\xB8:',str(theta)
+	print 'TagX:',str(tX),'TagY:',str(tY)
 	
     # Controller Handler for 3-axis P-controller
     def controlHandler(self,nextWaypoint):
@@ -167,8 +174,10 @@ class DoritoApp( JoyApp ):
 	drivescale = 1.0
 	rotscale = 0.5
 	# Current state values
-	curX = self.currState['x']
-	curY = self.currState['y']
+	#curX = self.currState['x']
+	#curY = self.currState['y']
+	curX = self.currState['tagX']
+	curY = self.currState['tagY']
 	curTheta = self.currState['theta']
 	curLoc = np.array((curX,curY))
 	# Compute errors
