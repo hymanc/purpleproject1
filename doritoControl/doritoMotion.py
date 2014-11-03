@@ -50,7 +50,7 @@ class DoritoMotion(object):
 	ftVector = np.array([ [force[0]], [force[1]], [torque] ]) # Force torque vector
 	rfi = np.linalg.inv(self._forceTorqueMatrix(True)) # System matrix
 	cmds = np.dot(rfi, ftVector).reshape(3) # Motor commands as a list
-	if(max(abs(cmds)) > 1):
+	if(max(abs(cmds)) > 0.75):
 	    print 'Saturating commands'
 	    cmds = cmds/(max(abs(cmds))) # Keep directions but limit power
 	print 'Motor Commands', str(cmds)

@@ -74,7 +74,7 @@ class DoritoApp( JoyApp ):
 		print 'Handling Control Update'
 		print 'Found', len(waypoints), ' waypoints'
 		if(len(waypoints) > 0): # If waypoint exists
-		    currWp = waypoints[0]
+		    currWp = waypoints[1]
 		    print 'Next Waypoint:', str(currWp) # 
 		    tError, rError = self.controlHandler(currWp)		# Run control handler
 		    print 'X-Y Error', tError
@@ -176,7 +176,7 @@ class DoritoApp( JoyApp ):
 	nextWaypoint = vu.toImageCoordinates(nextWaypoint)
 	print 'Target waypoint at', str(nextWaypoint), 'in img coordinates'
 	# Command scaling factors
-	drivescale = 1.0
+	drivescale = 0.05
 
 	# Current state values
 	#curX = self.currState['x']
@@ -189,9 +189,9 @@ class DoritoApp( JoyApp ):
 	xyError = nextWaypoint - curLoc
 	xyNorm = np.linalg.norm(xyError)
 	if(xyNorm > 5):
-	    rotscale = 0.8 * np.linalg.norm(xyError)
+	    rotscale = 0.1 * np.linalg.norm(xyError)
 	else:
-	    rotscale = 0.8
+	    rotscale = 0.1
 	thetaError = -curTheta
 	f = drivescale * (xyError) # Net translational "force" command
 	t = rotscale*(thetaError) # Net "Torque" command
@@ -222,7 +222,7 @@ class DoritoApp( JoyApp ):
     def swapWaypointXY(self, waypoints):
 	swapWaypoints = []
 	for wp in waypoints:
-	    swapWaypoints.append((wp[0],wp[1])) #UNDO
+	    swapWaypoints.append((wp[0],1.0*wp[1])) #UNDO
 	return swapWaypoints
 	
 # Top level main() bootstrap
