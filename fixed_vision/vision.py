@@ -51,7 +51,10 @@ class VisionSystem(object):
 		
 		# Drawing storage
 		self.waypointEst = [(300,300)] # Waypoint estimates for UI
-		self.tagLoc = (10,10)
+		self.tagLoc = (10,10) # Tag location estimate
+		self.fVectorStart = (0,0)
+		self.fVectorEnd = (0,0)
+		
 		
 		#self.worldpts = np.float32([
 		#    [0,self.YSIZE/2],
@@ -99,12 +102,12 @@ class VisionSystem(object):
 		# Filter Controls Window
 		ctlWindow = cv2.namedWindow(self.CTL_NAME)
 		cv2.createTrackbar('Blue', self.CTL_NAME, 88, 180, self.trackbarChangeHandler)
-		cv2.createTrackbar('Green', self.CTL_NAME, 57, 180, self.trackbarChangeHandler) 
+		cv2.createTrackbar('Green', self.CTL_NAME, 41, 180, self.trackbarChangeHandler) 
 		cv2.createTrackbar('Red', self.CTL_NAME, 172, 180, self.trackbarChangeHandler)
 		cv2.createTrackbar('B Cutoff', self.CTL_NAME, 110, 255, self.trackbarChangeHandler)
 		cv2.createTrackbar('G Cutoff', self.CTL_NAME, 110, 255, self.trackbarChangeHandler)
 		cv2.createTrackbar('R Cutoff', self.CTL_NAME, 110, 255, self.trackbarChangeHandler)
-		cv2.createTrackbar('Sat Cutoff', self.CTL_NAME, 130, 255, self.trackbarChangeHandler)
+		cv2.createTrackbar('Sat Cutoff', self.CTL_NAME, 100, 255, self.trackbarChangeHandler)
 		cv2.createTrackbar('Show Background', self.CTL_NAME, 1, 1, self.trackbarChangeHandler)
 		
 		# Camera input window
@@ -159,18 +162,22 @@ class VisionSystem(object):
 			    self.theta_est = ftheta
 			    vu.drawSquareMarker(self.rgbImg, int(fctr[0]), int(fctr[1]), 5, (255,0,255))
 			if(gCentroid != None):
-				vu.drawSquareMarker(self.rgbImg, int(gCentroid[0]), int(gCentroid[1]), 5, (255,0,255))
+				vu.drawSquareMarker(self.rgbImg, int(gCentroid[0]), int(gCentroid[1]), 5, (0,0,255))
 			if(rCentroid != None):
-				vu.drawSquareMarker(self.rgbImg, int(rCentroid[0]), int(rCentroid[1]), 5, (255,0,255))
+				vu.drawSquareMarker(self.rgbImg, int(rCentroid[0]), int(rCentroid[1]), 5, (255,0,0))
 			if(bCentroid != None):
-				vu.drawSquareMarker(self.rgbImg, int(bCentroid[0]), int(bCentroid[1]), 5, (255,0,255))
+				vu.drawSquareMarker(self.rgbImg, int(bCentroid[0]), int(bCentroid[1]), 5, (255,255,0))
 			wpIndex = 0
 			for wp in self.waypointEst:
 			    wpIndex = wpIndex + 1
-			    vu.drawFilledCircleMarker(self.rgbImg, wp[0], wp[1], 10, (0,255,255)) #
+			    if(wpIndex == 1):
+				wpcolor = (0,0,255)
+			    else:
+				wpcolor = (0,255,255)
+			    vu.drawFilledCircleMarker(self.rgbImg, wp[0], wp[1], 10, wpcolor) #
 			    vu.drawTextIndex(self.rgbImg, wp[0], wp[1], str(wpIndex)) # Draw waypoint index
 			vu.drawFilledCircleMarker(self.rgbImg, self.tagLoc[0], self.tagLoc[1], 5, (0,0,160))
-			    
+			#vu.drawVector(self.rgbImg, self.fVectorStart, self.fVectorEnd, (255,128,255))
 			#cv2.imshow(self.CAL_NAME, self.warpImg)
 			cv2.imshow(self.PROC_NAME, self.rgbImg)
 	    #if cv2.waitKey(20) & 0xFF == ord('q'):

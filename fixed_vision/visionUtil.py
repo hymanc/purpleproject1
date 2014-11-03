@@ -63,6 +63,11 @@ class VisionUtil(object):
 	@staticmethod
 	def drawTextIndex(img, x, y, txtStr, color=(255,0,128)):
 	    cv2.putText(img, txtStr, (x,y), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
+	 
+	# Draws a 'vector' between two points
+	@staticmethod
+	def drawVector(img, start, end, color):
+	    cv2.line(img, start, end, color,2) # Just make a line for now
 	    
 	# Finds
 	@staticmethod
@@ -81,22 +86,25 @@ class VisionUtil(object):
 		else: # Determine localization with only two points
 		    
 		    if(bCtr != None and gCtr != None): # Blue and Green visible, Red unknown
-			theta = atan2(bCtr[1] - gCtr[1], bCtr[0] - gCtr[0]) - pi/3 # -pi/3 offset needed
+			#theta = atan2(bCtr[1] - gCtr[1], bCtr[0] - gCtr[0]) - pi/3 # -pi/3 offset needed
+			theta = atan2(gCtr[1] - bCtr[1], gCtr[0] - bCtr[0]) - pi/3 # -pi/3 offset needed
 			rDist = sqrt( pow(bCtr[0]-gCtr[0] , 2) + pow(bCtr[1]-gCtr[1],  2) ) # Distance between points
 			rAngle = theta # Angle between blue and red points
-			rCtr = (gCtr[0] + rDist * cos(rAngle), gCtr[1] + rDist * sin(rAngle)) # Estimated red center
+			rCtr = (bCtr[0] + rDist * cos(rAngle), bCtr[1] + rDist * sin(rAngle)) # Estimated red center
 		    
 		    elif(bCtr != None and rCtr != None): # Blue and Red Visible, Green Unknown
-			theta = atan2(bCtr[1] - rCtr[1], bCtr[0] - rCtr[0]) 
+			#theta = atan2(bCtr[1] - rCtr[1], bCtr[0] - rCtr[0]) 
+			theta = atan2(rCtr[1] - bCtr[1], rCtr[0] - bCtr[0]) 
 			gDist = sqrt( pow(rCtr[0]-bCtr[0], 2) + pow(rCtr[1]-bCtr[1], 2) ) # Distance between points
 			gAngle = theta + pi/3 # Angle between blue and green points
-			gCtr = (rCtr[0] + gDist * cos(gAngle), rCtr[1] + gDist * sin(gAngle)) # Estimated green center
+			gCtr = (bCtr[0] + gDist * cos(gAngle), bCtr[1] + gDist * sin(gAngle)) # Estimated green center
 		    
 		    elif(gCtr != None and rCtr != None): # Green and Red Visible, Blue unknown
-			theta = atan2(rCtr[1] - gCtr[1], rCtr[0] - gCtr[0]) + pi/3  # pi/3 offset needed
+			#theta = atan2(rCtr[1] - gCtr[1], rCtr[0] - gCtr[0]) + pi/3  # pi/3 offset needed
+			theta = atan2(gCtr[1] - rCtr[1], gCtr[0] - rCtr[0]) + pi/3  # pi/3 offset needed
 			bDist = sqrt( pow(rCtr[0]-gCtr[0], 2) + pow(rCtr[1]-gCtr[1], 2) ) # Distance between points
 			bAngle = theta - 2*pi/3 # Angle between Green and Blue points
-			bCtr = (gCtr[0] + bDist*cos(theta), gCtr[1]  + bDist*sin(theta)) # Estimated blue center
+			bCtr = (rCtr[0] + bDist*cos(theta), rCtr[1]  + bDist*sin(theta)) # Estimated blue center
 			
 		# Compute centroid off real or estimated points
 		if(bCtr != None and gCtr != None and rCtr != None):

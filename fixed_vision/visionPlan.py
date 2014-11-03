@@ -21,6 +21,11 @@ class VisionPlan( Plan ):
     def setTagLocation(self, tagEst):
 	self.vision.setTagLocation(tagEst)
 	
+    # Function to pass the force vector down for rendering
+    def setControlVectorRender(self, start, end):
+	self.vision.fVectorStart = start
+	self.vision.fVectorEnd = end
+	
     # Vision plan behavior
     def behavior( self ):
 	#print 'Launching Vision Plan'

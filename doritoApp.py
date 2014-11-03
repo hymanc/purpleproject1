@@ -77,6 +77,7 @@ class DoritoApp( JoyApp ):
 		    print 'Next Waypoint:', str(currWp) # 
 		    tError, rError = self.controlHandler(currWp)		# Run control handler
 		    print 'X-Y Error', tError
+		    self.vplan.setControlVectorRender(self.tagEst, self.tagEst + tError)
 		    print 'Rotation Error', rError
 		else:
 		    print 'No more waypoints available, stopping'
@@ -189,7 +190,7 @@ class DoritoApp( JoyApp ):
 	x = self.currState['x']
 	y = self.currState['y']
 	theta = self.currState['theta']
-	tagRobot = np.array([[5.],[5.]])
+	tagRobot = np.array([[1.],[1.]])
 	ct = cos(theta)
 	st = sin(theta)
 	r = np.array([ [ct, -st],[st, ct] ])
