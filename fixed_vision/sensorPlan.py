@@ -108,6 +108,10 @@ class SensorPlan( Plan ):
       dic = json_loads(msg)
       ts = self.app.now
       self.lastSensor = (ts, dic['f'], dic['b'])
+      print 'JSON:', str(dic)
+      # Check for field tags
+      #if dic.has_key(""):
+	  #TODO: check for world points
       if dic.has_key("w"):
         self.lastWaypoints = (ts,dic['w'])
       # Make sure to allow others to get the CPU

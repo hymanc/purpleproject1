@@ -69,7 +69,9 @@ class DoritoApp( JoyApp ):
 		if(len(wp) > 0): # If waypoint exists
 		    currWp = wp[0]
 		    print 'Next Waypoint:', str(currWp) # 
-		    self.controlHandler(currWp)		# Run control handler
+		    tError, rError = self.controlHandler(currWp)		# Run control handler
+		    print 'X-Y Error', tError
+		    print 'Rotation Error', rError
 		else:
 		    print 'No more waypoints available, stopping'
 		    if(self.servoErrorFlag == False):

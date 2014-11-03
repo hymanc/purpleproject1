@@ -43,21 +43,29 @@ class VisionSystem(object):
 		self.camera = camera
 		self.calstate = CalState.UNCAL
 		self.calpts = []
-		self.XSIZE = 600
-		self.YSIZE = 600
+		self.XSIZE = 1000
+		self.YSIZE = 1000
 		self.x_est = -1
 		self.y_est = -1
 		self.theta_est = -1
 		#self.worldpts = np.float32([[0,0],[self.XSIZE,0],[self.XSIZE,self.YSIZE],[0,self.YSIZE]])
 		#self.worldpts = np.float32([[0,self.YSIZE/2],[0,self.YSIZE],[self.XSIZE,self.YSIZE],[self.XSIZE,self.YSIZE/2]])
-		# Calibration points from world
+		
+		#self.worldpts = np.float32([
+		#    [0,self.YSIZE/2],
+		#    [0,0],
+		#    [self.XSIZE,0],
+		#    [self.XSIZE,self.YSIZE/2]
+		#    ])
+		
+		# ===== ***** Calibration points from world *****===== #
 		self.worldpts = np.float32([
-		    [0,self.YSIZE/2],
-		    [0,0],
-		    [self.XSIZE,0],
-		    [self.XSIZE,self.YSIZE/2]
-		    ])
-			
+		    [0,100],
+		    [100,100],
+		    [100,-100],
+		    [0,-100]
+		    ])*2+300
+		# ===== *************** ===== #
 		    
 		### Camera initialization ###
 		print 'Opening Camera ' + str(camera)
@@ -109,8 +117,8 @@ class VisionSystem(object):
 	### Main processing loop ###
 	#while(True):
 	    frameRet, self.camImg = self.vidcap.read()
-	    self.drawCalMarkers()
-	    cv2.imshow(self.CAM_FEED_NAME, self.camImg)
+	    #Img = self.drawCalMarkers()
+	    cv2.imshow(self.CAM_FEED_NAME, self.drawCalMarkers())
 	    if(self.calstate == CalState.CALIBRATED):
 			self.remapImage() # Apply perspective warp
 			bl = cv2.getTrackbarPos('Blue', self.CTL_NAME)
@@ -158,8 +166,10 @@ class VisionSystem(object):
 
 	# Draws calibration markers on the camera image       
 	def drawCalMarkers(self):
+		markedImg = self.camImg.copy()
 		for pt in self.calpts:
-		    vu.drawSquareMarker(self.camImg, pt[0], pt[1], 5, (255,0,255))
+		    vu.drawSquareMarker(markedImg, pt[0], pt[1], 5, (255,0,255))
+		return markedImg
 
 	# Finds a marker's central moment
 	def findMarker(self, image, hueCenter, hueWidth, satMin, valMin):
