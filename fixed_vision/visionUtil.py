@@ -91,7 +91,7 @@ class VisionUtil(object):
 		# Determine which tags are visible
 		if(bCtr != None and gCtr != None and rCtr != None): # All three tags visible
 		   #ctr = (np.mean([bCtr[0], gCtr[0], rCtr[0]]),np.mean([bCtr[1], gCtr[2], rCtr[3]]))
-		   aGR = atan2(gCtr[1] - rCtr[1], gCtr[0] - rCtr[0]) # Compute green-red angle
+		   aGR = atan2(rCtr[1] - gCtr[1], rCtr[0] - gCtr[0]) # Compute green-red angle
 		   aBR = atan2(rCtr[1] - bCtr[1], rCtr[0] - bCtr[0]) # Compute blue-red angle
 		   aBG = atan2(gCtr[1] - bCtr[1], gCtr[0] - bCtr[0]) # Compute blue-green angle
 		   theta = np.mean([aGR + pi/3, aBR, aBG - pi/3]) # Compute theta estimate from angles
@@ -117,7 +117,7 @@ class VisionUtil(object):
 			theta = atan2(rCtr[1] - gCtr[1], rCtr[0] - gCtr[0]) + pi/3  # pi/3 offset needed
 			bDist = sqrt( pow(rCtr[0]-gCtr[0], 2) + pow(rCtr[1]-gCtr[1], 2) ) # Distance between points
 			bAngle = theta - 2*pi/3 # Angle between Green and Blue points
-			bCtr = (rCtr[0] + bDist*cos(theta), rCtr[1]  + bDist*sin(theta)) # Estimated blue center
+			bCtr = (gCtr[0] + bDist*cos(theta), gCtr[1]  + bDist*sin(theta)) # Estimated blue center
 			
 		# Compute centroid off real or estimated points
 		if(bCtr != None and gCtr != None and rCtr != None):

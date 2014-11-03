@@ -72,13 +72,19 @@ class VisionSystem(object):
 		    ])#*self.IMG_SCALE + self.IMG_OFFSET'''
 		
 		# Swap x-y coordinates (WTF!)
-		self.worldpts = np.float32([
+		'''self.worldpts = np.float32([
 		    [-105,-5],		#22
 		    [-100, 90],		#27
 		    [110, 90],		#26
 		    [107,  0]		#25
-		    ])#*self.IMG_SCALE + self.IMG_OFFSET
+		    ])#*self.IMG_SCALE + self.IMG_OFFSET'''
 				
+		self.worldpts = np.float32([
+		    [-100,0], #22
+		    [-100,75], #27
+		    [110,100], #26
+		    [100,0] #25
+		    ])
 		self.worldpts =  vu.toImageCoordinates(self.worldpts)
 		testPts = vu.toWaypointCoordinates(self.worldpts)
 		print 'TestWorldPts', str(testPts)
@@ -159,7 +165,8 @@ class VisionSystem(object):
 			    fctr, ftheta = self.filterPoints(ctr, theta)
 			    self.x_est = ctr[0]
 			    self.y_est = ctr[1]
-			    self.theta_est = ftheta
+			    print 'Theta IN:', theta
+			    self.theta_est = theta#ftheta
 			    self.tagLoc = vu.computeTagLocation(ctr, bCtr) # Compute tag location
 			    vu.drawSquareMarker(self.rgbImg, int(fctr[0]), int(fctr[1]), 5, (255,0,255))
 			if(gCentroid != None):

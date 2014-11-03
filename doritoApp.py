@@ -160,7 +160,7 @@ class DoritoApp( JoyApp ):
 	    y = round(y, 3)
 	theta = self.currState['theta']
 	if(theta != None):
-	    theta = round(theta*180/pi,3)
+	    theta = round(theta*180.0/pi, 3)
 	tX = self.currState['tagX']
 	if(tX != None):
 	    tX = round(tX, 3)
@@ -177,7 +177,7 @@ class DoritoApp( JoyApp ):
 	print 'Target waypoint at', str(nextWaypoint), 'in img coordinates'
 	# Command scaling factors
 	drivescale = 1.0
-	rotscale = 2.0
+
 	# Current state values
 	#curX = self.currState['x']
 	#curY = self.currState['y']
@@ -187,6 +187,11 @@ class DoritoApp( JoyApp ):
 	curLoc = np.array((curX,curY))
 	# Compute errors
 	xyError = nextWaypoint - curLoc
+	xyNorm = np.linalg.norm(xyError)
+	if(xyNorm > 5):
+	    rotscale = 0.8 * np.linalg.norm(xyError)
+	else:
+	    rotscale = 0.8
 	thetaError = -curTheta
 	f = drivescale * (xyError) # Net translational "force" command
 	t = rotscale*(thetaError) # Net "Torque" command
@@ -217,7 +222,7 @@ class DoritoApp( JoyApp ):
     def swapWaypointXY(self, waypoints):
 	swapWaypoints = []
 	for wp in waypoints:
-	    swapWaypoints.append((wp[1],wp[0]))
+	    swapWaypoints.append((wp[0],wp[1])) #UNDO
 	return swapWaypoints
 	
 # Top level main() bootstrap
