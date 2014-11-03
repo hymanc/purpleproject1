@@ -48,7 +48,10 @@ class VisionSystem(object):
 		self.x_est = -1
 		self.y_est = -1
 		self.theta_est = -1
+		
+		# Drawing storage
 		self.waypointEst = [(300,300)] # Waypoint estimates for UI
+		self.tagLoc = (10,10)
 		
 		#self.worldpts = np.float32([
 		#    [0,self.YSIZE/2],
@@ -58,12 +61,21 @@ class VisionSystem(object):
 		#    ])
 		
 		# ===== ***** Calibration points from world *****===== #
+		'''self.worldpts = np.float32([
+		    [-5,   -1. * -105],		#22
+		    [90, -1. * -100],		#27
+		    [90, -1. *  110],		#26
+		    [0,   -1. *  107]		#25
+		    ])#*self.IMG_SCALE + self.IMG_OFFSET'''
+		
+		# Swap x-y coordinates (WTF!)
 		self.worldpts = np.float32([
-		    [0,   -1. * -100],		#22
-		    [100, -1. * -100],		#27
-		    [100, -1. *  100],		#26
-		    [0,   -1. *  100]		#25
+		    [-105,-5],		#22
+		    [-100, 90],		#27
+		    [110, 90],		#26
+		    [107,  0]		#25
 		    ])#*self.IMG_SCALE + self.IMG_OFFSET
+				
 		self.worldpts =  vu.toImageCoordinates(self.worldpts)
 		testPts = vu.toWaypointCoordinates(self.worldpts)
 		print 'TestWorldPts', str(testPts)
@@ -155,8 +167,10 @@ class VisionSystem(object):
 			wpIndex = 0
 			for wp in self.waypointEst:
 			    wpIndex = wpIndex + 1
-			    vu.drawFilledCircleMarker(self.rgbImg, wp[0], wp[1], 10, (0,255,255))
-			    vu.drawTextIndex(self.rgbImg, wp[0], wp[1], str(wpIndex))# Draw waypoint index
+			    vu.drawFilledCircleMarker(self.rgbImg, wp[0], wp[1], 10, (0,255,255)) #
+			    vu.drawTextIndex(self.rgbImg, wp[0], wp[1], str(wpIndex)) # Draw waypoint index
+			vu.drawFilledCircleMarker(self.rgbImg, self.tagLoc[0], self.tagLoc[1], 5, (0,0,160))
+			    
 			#cv2.imshow(self.CAL_NAME, self.warpImg)
 			cv2.imshow(self.PROC_NAME, self.rgbImg)
 	    #if cv2.waitKey(20) & 0xFF == ord('q'):
@@ -269,6 +283,10 @@ class VisionSystem(object):
 	# Sets the waypoint list for rendering on overlay
 	def setWaypoints(self, waypointEst):
 	    self.waypointEst = vu.toImageCoordinates(waypointEst)
+	    
+	# Sets the estimated tag location for rendering on the overlay
+	def setTagLocation(self, tagEst):
+	    self.tagLoc = (int(tagEst[0]),int(tagEst[1]))
 	    
 	# Stops the vision process
 	def stop(self):

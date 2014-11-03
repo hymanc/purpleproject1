@@ -17,6 +17,10 @@ class VisionPlan( Plan ):
     def setWaypoints(self, waypoints):
 	self.vision.setWaypoints(waypoints)
 	
+    # Function to pass down tag estimate position for rendering
+    def setTagLocation(self, tagEst):
+	self.vision.setTagLocation(tagEst)
+	
     # Vision plan behavior
     def behavior( self ):
 	#print 'Launching Vision Plan'

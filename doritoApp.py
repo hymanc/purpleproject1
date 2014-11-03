@@ -61,9 +61,13 @@ class DoritoApp( JoyApp ):
 	    # Print
 	    self.currState = self.vplan.getState()		# Get latest state feedback from vision system
 	    self.printState()
-	    waypoints = np.float32(self.sensor.lastWaypoints[1])
+	    waypointsRaw = np.float32(self.sensor.lastWaypoints[1])
+	    waypoints = self.swapWaypointXY(waypointsRaw)
 	    print 'Waypoints:',str(waypoints)
 	    self.vplan.setWaypoints(waypoints)# Pass waypoints to vision system
+	    self.tagEst = self.robotTagLocation()
+	    print 'Tag Estimate', str(self.tagEst)
+	    self.vplan.setTagLocation(self.tagEst)
 	    #print 'Current state:', str(currState)
 	    if(self.opState == DoritoState.RUNNING): # Only update commands while running
 		print 'Handling Control Update'
@@ -178,6 +182,28 @@ class DoritoApp( JoyApp ):
     # Random walk to hit waypoint if it does not register
     def randomWalk(self, nextWaypoint):
 	pass # TODO: Implement
+	
+    # Estimates tag offselt location give the current robot state
+    def robotTagLocation(self):
+	tag = (0,0) # Estimate tag 
+	x = self.currState['x']
+	y = self.currState['y']
+	theta = self.currState['theta']
+	tagRobot = np.array([[5.],[5.]])
+	ct = cos(theta)
+	st = sin(theta)
+	r = np.array([ [ct, -st],[st, ct] ])
+	tagNp = np.dot(r, tagRobot)
+	# Convert tagNp to tuple
+	tag = (x + tagNp[0][0], x + tagNp[1][0])
+	return tag
+    
+    # Swaps the waypoint x-y coordinates
+    def swapWaypointXY(self, waypoints):
+	swapWaypoints = []
+	for wp in waypoints:
+	    swapWaypoints.append((wp[1],wp[0]))
+	return swapWaypoints
 	
 # Top level main() bootstrap
 if __name__=="__main__":
