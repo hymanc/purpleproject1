@@ -5,6 +5,7 @@ sys.path.insert(0, os.getcwd())
 from joy import JoyApp
 from joy.decl import *
 from fixed_vision.visionPlan import VisionPlan
+from fixed_vision.visionUtil import VisionUtil as vu
 from fixed_vision.sensorPlan import SensorPlan
 from doritoControl.doritoMotion import DoritoMotion
 import numpy as np
@@ -149,6 +150,9 @@ class DoritoApp( JoyApp ):
 	
     # Controller Handler for 3-axis P-controller
     def controlHandler(self,nextWaypoint):
+	# Convert waypoint into image coordinates
+	nextWaypoint = vu.toImageCoordinates(nextWaypoint)
+	print 'Target waypoint at', str(nextWaypoint), 'in img coordinates'
 	# Command scaling factors
 	drivescale = 1.0
 	rotscale = 0.5
@@ -165,7 +169,12 @@ class DoritoApp( JoyApp ):
 	if(self.servoErrorFlag == False):
 	    self.drive.setSpeed(np.asfarray(f), t) # Send command requests to the motion driver
 	return xyError, thetaError # Return errors
-	    
+	
+    # Random walk to hit waypoint if it does not register
+    def randomWalk(self, nextWaypoint):
+	a = 0
+	# TODO: Implement
+	
 # Top level main() bootstrap
 if __name__=="__main__":
     import sys

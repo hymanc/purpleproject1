@@ -37,7 +37,7 @@ class VisionSystem(object):
 	EMPTY_KERNEL = [0, 0, 0, 0, 0, 0, 0]
 	RAW_KERNEL = np.array([1, 2, 3, 6, 10, 18, 20], dtype = np.float32)
 	FIR_KERNEL = np.multiply(RAW_KERNEL,1/np.linalg.norm(RAW_KERNEL,1)) # Normalized kernel
-
+	
 	def __init__(self, camera):
 		### Instance Value initialization ###
 		self.camera = camera
@@ -48,9 +48,7 @@ class VisionSystem(object):
 		self.x_est = -1
 		self.y_est = -1
 		self.theta_est = -1
-		#self.worldpts = np.float32([[0,0],[self.XSIZE,0],[self.XSIZE,self.YSIZE],[0,self.YSIZE]])
-		#self.worldpts = np.float32([[0,self.YSIZE/2],[0,self.YSIZE],[self.XSIZE,self.YSIZE],[self.XSIZE,self.YSIZE/2]])
-		
+
 		#self.worldpts = np.float32([
 		#    [0,self.YSIZE/2],
 		#    [0,0],
@@ -60,11 +58,14 @@ class VisionSystem(object):
 		
 		# ===== ***** Calibration points from world *****===== #
 		self.worldpts = np.float32([
-		    [0,100],
-		    [100,100],
-		    [100,-100],
-		    [0,-100]
-		    ])*2+300
+		    [0,   -1. * -100],		#22
+		    [100, -1. * -100],		#27
+		    [100, -1. *  100],		#26
+		    [0,   -1. *  100]		#25
+		    ])#*self.IMG_SCALE + self.IMG_OFFSET
+		self.worldpts =  vu.toImageCoordinates(self.worldpts)
+		testPts = vu.toWaypointCoordinates(self.worldpts)
+		print 'TestWorldPts', str(testPts)
 		# ===== *************** ===== #
 		    
 		### Camera initialization ###
@@ -158,7 +159,7 @@ class VisionSystem(object):
 	# Use current perspective transform to remap image
 	def remapImage(self):
 		if(self.calstate == CalState.CALIBRATED):
-			self.warpImg = cv2.warpPerspective(self.camImg, self.warp,(self.XSIZE,self.YSIZE))
+			self.warpImg = cv2.warpPerspective(self.camImg, self.warp,(int(300*vu.IMG_SCALE),int(300*vu.IMG_SCALE)))
 			self.warpImg = cv2.GaussianBlur(self.warpImg, (9,9), 1)
 			self.warpImg = cv2.medianBlur(self.warpImg, 5)
 		else:

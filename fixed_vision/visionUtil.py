@@ -8,6 +8,19 @@ from math import *
 # Vision utilities class
 class VisionUtil(object):
     
+    	IMG_SCALE = 2
+	IMG_OFFSET = 150*IMG_SCALE
+	
+	# Converts "waypoint" coordinates into scaled/offset coordinates for vision processing
+	@staticmethod
+	def toImageCoordinates(items):
+	    return items*VisionUtil.IMG_SCALE + VisionUtil.IMG_OFFSET
+	
+	# Converts offset/scaled image coordinates back to waypoint coordinates
+	@staticmethod
+	def toWaypointCoordinates(items):
+	    return (items - VisionUtil.IMG_OFFSET) * 1.0/VisionUtil.IMG_SCALE
+	
 	# Prints marker centroids
 	@staticmethod
 	def printCentroids(gCtr, rCtr):
